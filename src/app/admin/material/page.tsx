@@ -79,7 +79,7 @@ export default function MaterialAdmin() {
     }));
 
     const lagerEintrag: PaletteMitFahrzeug | null = lagerPal
-      ? { ...lagerPal, fahrzeug_id: null, fahrzeug: undefined }
+      ? { ...lagerPal, fahrzeug_id: null, qr_token: "", fahrzeug: undefined }
       : null;
 
     const allePaletten: PaletteMitFahrzeug[] = lagerEintrag
