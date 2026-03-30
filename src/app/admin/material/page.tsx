@@ -196,23 +196,17 @@ export default function MaterialAdmin() {
           />
         </div>
 
-        {/* Seriennummer (immer sichtbar, bei Sens Mat besonders relevant) */}
+        {/* Seriennummer */}
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">
-            Seriennummer
-            {form.typ === "sens" && <span className="text-red-500 ml-1">*</span>}
-            {form.typ !== "sens" && <span className="text-gray-400 ml-1">(optional)</span>}
+            Seriennummer <span className="text-gray-400">(optional)</span>
           </label>
           <input
             value={form.seriennummer}
             onChange={(e) => set("seriennummer", e.target.value)}
             placeholder="z.B. CH-1234567"
-            required={form.typ === "sens"}
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 font-mono"
           />
-          {form.typ === "sens" && (
-            <p className="text-xs text-gray-400 mt-1">Sens Mat muss mit Seriennummer erfasst werden</p>
-          )}
         </div>
 
         <button type="submit" className="bg-red-600 text-white rounded-xl py-3 font-semibold active:bg-red-700">

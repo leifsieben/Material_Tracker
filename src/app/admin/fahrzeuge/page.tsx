@@ -123,21 +123,22 @@ export default function FahrzeugeAdmin() {
           />
         </div>
 
-        {gruppen.length > 0 && (
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Gruppe <span className="text-gray-400">(optional)</span></label>
-            <select
-              value={formFz.gruppe_id}
-              onChange={(e) => setFormFz((f) => ({ ...f, gruppe_id: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white"
-            >
-              <option value="">— Keine Gruppe —</option>
-              {gruppen.map((g) => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Gruppe <span className="text-gray-400">(optional)</span></label>
+          <select
+            value={formFz.gruppe_id}
+            onChange={(e) => setFormFz((f) => ({ ...f, gruppe_id: e.target.value }))}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white"
+          >
+            <option value="">— Keine Gruppe —</option>
+            {gruppen.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
+          {gruppen.length === 0 && (
+            <p className="text-xs text-gray-400 mt-1">Noch keine Gruppen — unter <Link href="/admin/gruppen" className="underline">Gruppen</Link> anlegen</p>
+          )}
+        </div>
 
         {fehler && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{fehler}</p>}
 
