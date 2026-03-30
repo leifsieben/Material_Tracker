@@ -23,7 +23,8 @@ export interface Zug {
 export interface Fahrzeug {
   id: string;
   zug_id: string;
-  name: string;
+  name: string;       // taktische Bezeichnung, z.B. "Puch 1"
+  m_nummer: string;   // militärische KFZ-Nummer, z.B. "M+12345"
 }
 
 export interface Palette {
