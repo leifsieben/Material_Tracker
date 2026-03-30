@@ -141,34 +141,27 @@ input {
 /* ─── Print Styles ──────────────────────────────────────────── */
 
 @media print {
-  /* Alles ausblenden ausser Labels */
-  body > * {
-    display: none !important;
-  }
-
-  /* Navigationsbereich ausblenden */
+  /* Navigations- und UI-Elemente ausblenden */
   .no-print {
     display: none !important;
   }
 
-  /* Label-Grid sichtbar machen */
+  /* Label-Grid für Druck */
   .qr-print-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
     gap: 8mm;
-    padding: 10mm;
+    padding: 0;
     width: 100%;
     box-sizing: border-box;
   }
 
-  /* Einzelnes Label: volle Seite */
-  body > div > .flex > .qr-label,
+  /* Label-Styling für Druck */
   .qr-label {
-    display: flex !important;
     break-inside: avoid;
     page-break-inside: avoid;
-    box-shadow: none;
-    border-color: #000;
+    box-shadow: none !important;
+    border-color: #000 !important;
   }
 
   /* Seitenränder */
@@ -177,7 +170,7 @@ input {
     margin: 10mm;
   }
 
-  /* Schriftfarben für Druck sicherstellen */
+  /* Farben und Hintergründe für Druck erzwingen */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;

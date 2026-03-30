@@ -46,7 +46,12 @@ export default function FahrzeugeAdmin() {
     }
     if (!formFz.m_nummer.trim()) return;
 
-    const mNummer = formFz.m_nummer.trim().toUpperCase();
+    if (!/^\d+$/.test(formFz.m_nummer.trim())) {
+      setFehler("M-Nummer darf nur Ziffern enthalten (z.B. 12345).");
+      return;
+    }
+
+    const mNummer = "M+" + formFz.m_nummer.trim();
 
     // Pre-Check: M-Nummer bereits vorhanden?
     const { data: existing } = await supabase
@@ -116,13 +121,19 @@ export default function FahrzeugeAdmin() {
 
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">M-Nummer <span className="text-red-500">*</span></label>
-          <input
-            value={formFz.m_nummer}
-            onChange={(e) => setFormFz((f) => ({ ...f, m_nummer: e.target.value }))}
-            placeholder="M+12345"
-            required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 font-mono uppercase tracking-wider"
-          />
+          <div className="flex items-stretch border border-gray-300 rounded-lg overflow-hidden">
+            <span className="bg-gray-100 px-3 flex items-center font-mono font-bold text-gray-600 border-r border-gray-300 text-sm select-none">
+              M+
+            </span>
+            <input
+              value={formFz.m_nummer}
+              onChange={(e) => setFormFz((f) => ({ ...f, m_nummer: e.target.value.replace(/\D/g, "") }))}
+              placeholder="12345"
+              inputMode="numeric"
+              required
+              className="flex-1 px-3 py-2.5 font-mono tracking-wider outline-none min-w-0"
+            />
+          </div>
         </div>
 
         <div>

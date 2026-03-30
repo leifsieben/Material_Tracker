@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth-context";
 import type { Fahrzeug, Palette } from "@/types";
 
 interface FahrzeugMitPaletten extends Fahrzeug {
@@ -10,35 +11,30 @@ interface FahrzeugMitPaletten extends Fahrzeug {
 }
 
 export default function QRUebersicht() {
+  const { zugId, zugName: zugNameAuth } = useAuth();
   const [fahrzeuge, setFahrzeuge] = useState<FahrzeugMitPaletten[]>([]);
-  const [zugName, setZugName] = useState<string>("Mein Zug");
+  const [zugName, setZugName] = useState<string>("");
   const [laden, setLaden] = useState(true);
 
   useEffect(() => {
-    async function init() {
-      // Zug-Name laden
-      const { data: session } = await supabase.auth.getSession();
-      if (session.session) {
-        const { data: zug } = await supabase
-          .from("zug")
-          .select("name")
-          .eq("zugfuehrer_id", session.session.user.id)
-          .single();
-        if (zug) setZugName(zug.name);
-      }
+    if (zugNameAuth) setZugName(zugNameAuth);
+  }, [zugNameAuth]);
 
+  useEffect(() => {
+    if (!zugId) return;
+    async function init() {
       const { data: fz } = await supabase
         .from("fahrzeug")
-        .select("*, paletten:palette(*)");
+        .select("*, paletten:palette(*)")
+        .eq("zug_id", zugId)
+        .order("m_nummer");
       setFahrzeuge(fz ?? []);
       setLaden(false);
     }
     init();
-  }, []);
+  }, [zugId]);
 
-  const allePaletten = fahrzeuge.flatMap((fz) =>
-    fz.paletten.map((p) => ({ ...p, fahrzeugName: fz.name }))
-  );
+  const allePaletten = fahrzeuge.flatMap((fz) => fz.paletten);
 
   return (
     <main className="max-w-lg mx-auto p-4">
@@ -46,7 +42,7 @@ export default function QRUebersicht() {
       <div className="flex justify-between items-start mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">QR-Codes</h1>
-          <p className="text-sm text-gray-500">{zugName}</p>
+          {zugName && <p className="text-sm text-gray-500">{zugName}</p>}
         </div>
         {allePaletten.length > 0 && (
           <Link
@@ -62,9 +58,19 @@ export default function QRUebersicht() {
 
       {fahrzeuge.map((fz) => (
         <section key={fz.id} className="mb-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            🚗 {fz.name}
-          </h2>
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+              🚗 {fz.m_nummer}{fz.name !== fz.m_nummer ? ` · ${fz.name}` : ""}
+            </h2>
+            {fz.paletten.length > 0 && (
+              <Link
+                href={`/admin/qr/print?zug=${encodeURIComponent(zugName)}&fahrzeug_id=${fz.id}`}
+                className="text-xs text-gray-500 border border-gray-300 rounded-lg px-2.5 py-1 active:bg-gray-100"
+              >
+                Fahrzeug drucken
+              </Link>
+            )}
+          </div>
           <div className="flex flex-col gap-2">
             {fz.paletten.map((p) => (
               <div
@@ -76,7 +82,7 @@ export default function QRUebersicht() {
                   <p className="text-xs text-gray-400 font-mono">{p.qr_token}</p>
                 </div>
                 <Link
-                  href={`/admin/qr/${p.qr_token}?zug=${encodeURIComponent(zugName)}&fahrzeug=${encodeURIComponent(fz.name)}&palette=${encodeURIComponent(p.name)}`}
+                  href={`/admin/qr/${p.qr_token}?zug=${encodeURIComponent(zugName)}&fahrzeug=${encodeURIComponent(fz.m_nummer)}&bezeichnung=${encodeURIComponent(fz.name)}&palette=${encodeURIComponent(p.name)}`}
                   className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm font-medium active:bg-gray-900"
                 >
                   Label

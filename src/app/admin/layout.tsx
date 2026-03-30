@@ -38,11 +38,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen flex flex-col">
       {/* Account-Header */}
-      <header className="bg-gray-900 text-white px-4 py-2.5 flex justify-between items-center shrink-0">
+      <header className="no-print bg-gray-900 text-white px-4 py-2.5 flex justify-between items-center shrink-0">
         <span className="text-xs font-bold tracking-widest uppercase text-gray-400">
           Material Tracker
         </span>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <a
+            href="mailto:sieben.leif@gmail.com?subject=Material%20Tracker%20Feedback"
+            className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded-md transition-colors"
+          >
+            Feedback
+          </a>
           <span className="text-xs text-gray-300">👤 {emailKurz}</span>
           <button
             onClick={abmelden}
