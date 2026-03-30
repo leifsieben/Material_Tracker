@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+// Alle Seiten dynamisch rendern — verhindert Prerender-Fehler
+// wenn Supabase-Env-Variablen beim Build noch nicht gesetzt sind.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Material Tracker",
   description: "Materialverwaltung für Züge der Schweizer Armee",
