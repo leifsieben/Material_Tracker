@@ -12,6 +12,7 @@ export default function Signup() {
   const [passwortWdh, setPasswortWdh] = useState("");
   const [laden, setLaden] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
+  const [bestaetigung, setBestaetigung] = useState(false);
 
   async function registrieren(e: React.FormEvent) {
     e.preventDefault();
@@ -27,17 +28,48 @@ export default function Signup() {
     }
 
     setLaden(true);
-    const { error } = await supabase.auth.signUp({ email, password: passwort });
+    const { data, error } = await supabase.auth.signUp({ email, password: passwort });
 
     if (error) {
-      setFehler(error.message === "User already registered"
-        ? "Diese E-Mail ist bereits registriert."
-        : "Registrierung fehlgeschlagen. Bitte nochmals versuchen.");
+      if (error.message.includes("already registered")) {
+        setFehler("Diese E-Mail ist bereits registriert. Bitte direkt anmelden.");
+      } else {
+        setFehler(`Registrierung fehlgeschlagen: ${error.message}`);
+      }
       setLaden(false);
-    } else {
-      // Weiterleitung zum Zug-Setup
-      router.push("/admin/setup");
+      return;
     }
+
+    // Supabase gibt session=null zurück wenn E-Mail-Bestätigung aktiv ist
+    if (data.session) {
+      // E-Mail-Bestätigung deaktiviert → direkt eingeloggt
+      router.push("/admin/setup");
+    } else {
+      // Bestätigungsmail wurde verschickt
+      setBestaetigung(true);
+      setLaden(false);
+    }
+  }
+
+  if (bestaetigung) {
+    return (
+      <main className="flex flex-col items-center justify-center min-h-screen p-6">
+        <div className="w-full max-w-sm text-center">
+          <div className="text-5xl mb-4">📧</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Bestätigungsmail gesendet</h1>
+          <p className="text-gray-500 text-sm mb-6">
+            Bitte den Link in der E-Mail an <strong>{email}</strong> klicken, dann kannst du dich anmelden.
+          </p>
+          <p className="text-xs text-gray-400 bg-gray-50 rounded-lg p-3">
+            <strong>Hinweis:</strong> Einfacher ist es, die E-Mail-Bestätigung in Supabase zu deaktivieren:<br />
+            Supabase Dashboard → Authentication → Email → «Confirm email» ausschalten
+          </p>
+          <Link href="/login" className="block mt-6 text-red-600 font-medium text-sm">
+            Zur Anmeldung →
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -80,11 +112,12 @@ export default function Signup() {
               onChange={(e) => setPasswortWdh(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2.5"
               autoComplete="new-password"
-              placeholder="Passwort bestätigen"
             />
           </div>
 
-          {fehler && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{fehler}</p>}
+          {fehler && (
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{fehler}</p>
+          )}
 
           <button
             type="submit"

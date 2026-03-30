@@ -1,16 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth-context";
 
 export default function Login() {
   const router = useRouter();
+  const { session, laden: authLaden } = useAuth();
   const [email, setEmail] = useState("");
   const [passwort, setPasswort] = useState("");
   const [laden, setLaden] = useState(false);
   const [fehler, setFehler] = useState<string | null>(null);
+
+  // Bereits eingeloggt → direkt zum Admin
+  useEffect(() => {
+    if (!authLaden && session) {
+      router.push("/admin");
+    }
+  }, [session, authLaden, router]);
 
   async function anmelden(e: React.FormEvent) {
     e.preventDefault();
@@ -18,12 +27,27 @@ export default function Login() {
     setFehler(null);
 
     const { error } = await supabase.auth.signInWithPassword({ email, password: passwort });
+
     if (error) {
-      setFehler("Ungültige Anmeldedaten.");
+      if (error.message.includes("Email not confirmed")) {
+        setFehler("E-Mail noch nicht bestätigt. Bitte zuerst den Link in der Bestätigungsmail klicken — oder E-Mail-Bestätigung in Supabase deaktivieren.");
+      } else if (error.message.includes("Invalid login credentials")) {
+        setFehler("E-Mail oder Passwort falsch.");
+      } else {
+        setFehler(`Anmeldung fehlgeschlagen: ${error.message}`);
+      }
       setLaden(false);
     } else {
       router.push("/admin");
     }
+  }
+
+  if (authLaden) {
+    return (
+      <main className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-400">Wird geladen…</p>
+      </main>
+    );
   }
 
   return (
@@ -56,7 +80,9 @@ export default function Login() {
             />
           </div>
 
-          {fehler && <p className="text-sm text-red-600">{fehler}</p>}
+          {fehler && (
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{fehler}</p>
+          )}
 
           <button
             type="submit"
