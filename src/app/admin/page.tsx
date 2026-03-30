@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
 export default function AdminDashboard() {
-  const { zugName } = useAuth();
+  const { zugName, zugId } = useAuth();
 
   return (
     <main className="max-w-lg mx-auto p-4">
@@ -43,6 +43,13 @@ export default function AdminDashboard() {
           className="block bg-red-50 border border-red-200 rounded-xl px-4 py-4 active:bg-red-100">
           <p className="font-semibold text-red-700">→ Zugübersicht</p>
         </Link>
+        {zugId && (
+          <Link href={`/uebersicht/${zugId}`}
+            className="block bg-white border border-gray-200 rounded-xl px-4 py-4 shadow-sm active:bg-gray-50">
+            <p className="font-semibold text-gray-900">👁 Wer hat was?</p>
+            <p className="text-sm text-gray-500">Offene Entnahmen im Zug anzeigen</p>
+          </Link>
+        )}
       </div>
     </main>
   );

@@ -76,7 +76,8 @@ export default function ZugSetup() {
         setFehler("Zug konnte nicht gespeichert werden.");
         setLaden(false);
       } else {
-        router.push("/admin");
+        // Vollständiger Reload damit Auth-Context den neuen Namen lädt
+        window.location.href = "/admin";
       }
     } else {
       // Neuen Zug erstellen
@@ -89,7 +90,7 @@ export default function ZugSetup() {
         setFehler("Zug konnte nicht erstellt werden. Bitte nochmals versuchen.");
         setLaden(false);
       } else {
-        router.push("/admin");
+        window.location.href = "/admin";
       }
     }
   }

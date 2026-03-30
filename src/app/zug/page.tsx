@@ -11,6 +11,7 @@ interface FahrzeugMitPaletten extends Fahrzeug {
 
 export default function ZugUebersicht() {
   const [fahrzeuge, setFahrzeuge] = useState<FahrzeugMitPaletten[]>([]);
+  const [zugId, setZugId] = useState<string | null>(null);
   const [laden, setLaden] = useState(true);
   const [fehler, setFehler] = useState<string | null>(null);
 
@@ -23,6 +24,7 @@ export default function ZugUebersicht() {
         setFehler("Daten konnten nicht geladen werden.");
       } else {
         setFahrzeuge(fz ?? []);
+        if (fz?.[0]) setZugId(fz[0].zug_id);
       }
       setLaden(false);
     }
@@ -62,6 +64,15 @@ export default function ZugUebersicht() {
 
       {!laden && fahrzeuge.length === 0 && !fehler && (
         <p className="text-gray-400 text-sm">Noch keine Fahrzeuge angelegt.</p>
+      )}
+
+      {zugId && (
+        <Link
+          href={`/uebersicht/${zugId}`}
+          className="block text-center text-sm text-gray-500 border border-gray-200 rounded-xl px-4 py-3 mt-4 active:bg-gray-50"
+        >
+          Wer hat was? →
+        </Link>
       )}
     </main>
   );
