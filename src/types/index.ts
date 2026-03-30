@@ -38,10 +38,9 @@ export interface Gruppe {
 }
 
 export interface Fahrzeug {
-  id: string;
+  id: string;         // militärische KFZ-Nummer, z.B. "M+12345"
   zug_id: string;
   name: string;       // taktische Bezeichnung, z.B. "Puch 1"
-  m_nummer: string;   // militärische KFZ-Nummer, z.B. "M+12345"
   gruppe_id?: string | null;
   gruppe?: Gruppe;
 }

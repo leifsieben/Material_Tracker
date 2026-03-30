@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
-import type { Fahrzeug, Palette } from "@/types";
-import type { Gruppe } from "@/types";
+import type { Fahrzeug, Palette, Gruppe } from "@/types";
 
 interface FahrzeugMitPaletten extends Fahrzeug {
   paletten: Palette[];
@@ -16,7 +15,7 @@ export default function FahrzeugeAdmin() {
   const { zugId, zugName } = useAuth();
   const [fahrzeuge, setFahrzeuge] = useState<FahrzeugMitPaletten[]>([]);
   const [gruppen, setGruppen] = useState<Gruppe[]>([]);
-  const [formFz, setFormFz] = useState({ m_nummer: "", name: "", gruppe_id: "" });
+  const [formFz, setFormFz] = useState({ id: "", name: "", gruppe_id: "" });
   const [neuePalette, setNeuePalette] = useState<Record<string, string>>({});
   const [fehler, setFehler] = useState<string | null>(null);
 
@@ -26,7 +25,7 @@ export default function FahrzeugeAdmin() {
       .from("fahrzeug")
       .select("*, paletten:palette(*), gruppe(*)")
       .eq("zug_id", zugId)
-      .order("m_nummer");
+      .order("id");
     const { data: gr } = await supabase
       .from("gruppe")
       .select("*")
@@ -45,22 +44,22 @@ export default function FahrzeugeAdmin() {
       setFehler("Kein Zug gefunden. Stelle sicher dass dein Account einem Zug zugeordnet ist (/admin/setup).");
       return;
     }
-    if (!formFz.m_nummer.trim()) return;
+    if (!formFz.id.trim()) return;
 
     const { error } = await supabase.from("fahrzeug").insert({
+      id: formFz.id.trim().toUpperCase(),
       zug_id: zugId,
-      m_nummer: formFz.m_nummer.trim().toUpperCase(),
-      name: formFz.name.trim() || formFz.m_nummer.trim().toUpperCase(),
+      name: formFz.name.trim() || formFz.id.trim().toUpperCase(),
       gruppe_id: formFz.gruppe_id || null,
     });
 
     if (error) {
-      setFehler(error.message.includes("unique")
-        ? `M-Nummer ${formFz.m_nummer.toUpperCase()} existiert bereits.`
+      setFehler(error.message.includes("unique") || error.message.includes("duplicate")
+        ? `M-Nummer ${formFz.id.toUpperCase()} existiert bereits.`
         : `Fehler: ${error.message}`);
       return;
     }
-    setFormFz({ m_nummer: "", name: "", gruppe_id: "" });
+    setFormFz({ id: "", name: "", gruppe_id: "" });
     laden();
   }
 
@@ -105,8 +104,8 @@ export default function FahrzeugeAdmin() {
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">M-Nummer <span className="text-red-500">*</span></label>
           <input
-            value={formFz.m_nummer}
-            onChange={(e) => setFormFz((f) => ({ ...f, m_nummer: e.target.value }))}
+            value={formFz.id}
+            onChange={(e) => setFormFz((f) => ({ ...f, id: e.target.value }))}
             placeholder="M+12345"
             required
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 font-mono uppercase tracking-wider"
@@ -156,8 +155,8 @@ export default function FahrzeugeAdmin() {
           <div className="bg-gray-800 text-white px-4 py-3 flex justify-between items-center">
             <div className="flex items-center gap-2">
               <div>
-                <p className="font-bold font-mono tracking-wider">{fz.m_nummer}</p>
-                {fz.name !== fz.m_nummer && <p className="text-xs text-gray-300 mt-0.5">{fz.name}</p>}
+                <p className="font-bold font-mono tracking-wider">{fz.id}</p>
+                {fz.name !== fz.id && <p className="text-xs text-gray-300 mt-0.5">{fz.name}</p>}
               </div>
               {fz.gruppe && (
                 <span
@@ -198,7 +197,7 @@ export default function FahrzeugeAdmin() {
                   </div>
                   <div className="flex gap-3 items-center">
                     <Link
-                      href={`/admin/qr/${p.qr_token}?zug=${encodeURIComponent(zugName ?? "")}&fahrzeug=${encodeURIComponent(fz.m_nummer)}&bezeichnung=${encodeURIComponent(fz.name)}&palette=${encodeURIComponent(p.name)}${fz.gruppe ? `&gruppe=${encodeURIComponent(fz.gruppe.name)}&gruppefarbe=${encodeURIComponent(fz.gruppe.farbe)}` : ""}`}
+                      href={`/admin/qr/${p.qr_token}?zug=${encodeURIComponent(zugName ?? "")}&fahrzeug=${encodeURIComponent(fz.id)}&bezeichnung=${encodeURIComponent(fz.name)}&palette=${encodeURIComponent(p.name)}${fz.gruppe ? `&gruppe=${encodeURIComponent(fz.gruppe.name)}&gruppefarbe=${encodeURIComponent(fz.gruppe.farbe)}` : ""}`}
                       className="text-xs text-blue-600 font-medium"
                     >QR</Link>
                     <button onClick={() => paletteLoeschen(p.id)} className="text-xs text-red-500">Löschen</button>

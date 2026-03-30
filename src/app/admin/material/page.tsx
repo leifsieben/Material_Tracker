@@ -93,7 +93,7 @@ export default function MaterialAdmin() {
 
   function paletteLabel(p: PaletteMitFahrzeug) {
     const fzLabel = p.fahrzeug
-      ? `${p.fahrzeug.m_nummer}${p.fahrzeug.name !== p.fahrzeug.m_nummer ? ` (${p.fahrzeug.name})` : ""} – `
+      ? `${p.fahrzeug.id}${p.fahrzeug.name !== p.fahrzeug.id ? ` (${p.fahrzeug.name})` : ""} – `
       : "";
     return `${fzLabel}${p.name}`;
   }
@@ -218,7 +218,7 @@ export default function MaterialAdmin() {
       <div className="flex flex-col gap-2">
         {materialListe.map((m) => {
           const paletteLabel = m.palette
-            ? `${m.palette.fahrzeug?.m_nummer ?? ""} – ${m.palette.name}`
+            ? `${m.palette.fahrzeug?.id ?? ""} – ${m.palette.name}`
             : "—";
           return (
             <div key={m.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3">
