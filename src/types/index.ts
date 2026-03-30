@@ -58,6 +58,7 @@ export interface Material {
   palette_id: string;
   typ: MaterialTyp;
   objekt: string;
+  seriennummer?: string | null;
   bestand_initial: number;
   bestand_aktuell: number;
 }

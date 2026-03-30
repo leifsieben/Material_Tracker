@@ -41,7 +41,11 @@ export default function FahrzeugeAdmin() {
   async function fahrzeugHinzufuegen(e: React.FormEvent) {
     e.preventDefault();
     setFehler(null);
-    if (!formFz.m_nummer.trim() || !zugId) return;
+    if (!zugId) {
+      setFehler("Kein Zug gefunden. Stelle sicher dass dein Account einem Zug zugeordnet ist (/admin/setup).");
+      return;
+    }
+    if (!formFz.m_nummer.trim()) return;
 
     const { error } = await supabase.from("fahrzeug").insert({
       zug_id: zugId,
