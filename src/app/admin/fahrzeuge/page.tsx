@@ -51,25 +51,26 @@ export default function FahrzeugeAdmin() {
       return;
     }
 
-    const mNummer = "M+" + formFz.m_nummer.trim();
+    const mNummerInt = parseInt(formFz.m_nummer.trim(), 10);
+    const mNummerAnzeige = `M+${mNummerInt}`;
 
     // Pre-Check: M-Nummer bereits vorhanden?
     const { data: existing } = await supabase
       .from("fahrzeug")
       .select("id")
-      .eq("m_nummer", mNummer)
+      .eq("m_nummer", mNummerInt)
       .eq("zug_id", zugId)
       .maybeSingle();
 
     if (existing) {
-      setFehler(`M-Nummer ${mNummer} existiert bereits.`);
+      setFehler(`M-Nummer ${mNummerAnzeige} existiert bereits.`);
       return;
     }
 
     const { error } = await supabase.from("fahrzeug").insert({
       zug_id: zugId,
-      m_nummer: mNummer,
-      name: formFz.name.trim() || mNummer,
+      m_nummer: mNummerInt,
+      name: formFz.name.trim() || mNummerAnzeige,
       gruppe_id: formFz.gruppe_id || null,
     });
 
@@ -179,8 +180,8 @@ export default function FahrzeugeAdmin() {
           <div className="bg-gray-800 text-white px-4 py-3 flex justify-between items-center">
             <div className="flex items-center gap-2">
               <div>
-                <p className="font-bold font-mono tracking-wider">{fz.m_nummer}</p>
-                {fz.name !== fz.m_nummer && <p className="text-xs text-gray-300 mt-0.5">{fz.name}</p>}
+                <p className="font-bold font-mono tracking-wider">M+{fz.m_nummer}</p>
+                {fz.name !== `M+${fz.m_nummer}` && <p className="text-xs text-gray-300 mt-0.5">{fz.name}</p>}
               </div>
               {fz.gruppe && (
                 <span
@@ -221,7 +222,7 @@ export default function FahrzeugeAdmin() {
                   </div>
                   <div className="flex gap-3 items-center">
                     <Link
-                      href={`/admin/qr/${p.qr_token}?zug=${encodeURIComponent(zugName ?? "")}&fahrzeug=${encodeURIComponent(fz.m_nummer)}&bezeichnung=${encodeURIComponent(fz.name)}&palette=${encodeURIComponent(p.name)}${fz.gruppe ? `&gruppe=${encodeURIComponent(fz.gruppe.name)}&gruppefarbe=${encodeURIComponent(fz.gruppe.farbe)}` : ""}`}
+                      href={`/admin/qr/${p.qr_token}?zug=${encodeURIComponent(zugName ?? "")}&fahrzeug=${encodeURIComponent(`M+${fz.m_nummer}`)}&bezeichnung=${encodeURIComponent(fz.name)}&palette=${encodeURIComponent(p.name)}${fz.gruppe ? `&gruppe=${encodeURIComponent(fz.gruppe.name)}&gruppefarbe=${encodeURIComponent(fz.gruppe.farbe)}` : ""}`}
                       className="text-xs text-blue-600 font-medium"
                     >QR</Link>
                     <button onClick={() => paletteLoeschen(p.id)} className="text-xs text-red-500">Löschen</button>

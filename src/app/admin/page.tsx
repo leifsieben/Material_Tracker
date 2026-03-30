@@ -10,7 +10,12 @@ export default function AdminDashboard() {
     <main className="max-w-lg mx-auto p-4">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Admin</h1>
-        {zugName && <p className="text-sm text-gray-500">{zugName}</p>}
+        {zugName && (
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-gray-500">{zugName}</p>
+            <Link href="/admin/setup" className="text-xs text-gray-400 underline">bearbeiten</Link>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">

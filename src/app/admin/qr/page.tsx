@@ -60,7 +60,7 @@ export default function QRUebersicht() {
         <section key={fz.id} className="mb-6">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-              🚗 {fz.m_nummer}{fz.name !== fz.m_nummer ? ` · ${fz.name}` : ""}
+              🚗 M+{fz.m_nummer}{fz.name !== `M+${fz.m_nummer}` ? ` · ${fz.name}` : ""}
             </h2>
             {fz.paletten.length > 0 && (
               <Link
@@ -82,7 +82,7 @@ export default function QRUebersicht() {
                   <p className="text-xs text-gray-400 font-mono">{p.qr_token}</p>
                 </div>
                 <Link
-                  href={`/admin/qr/${p.qr_token}?zug=${encodeURIComponent(zugName)}&fahrzeug=${encodeURIComponent(fz.m_nummer)}&bezeichnung=${encodeURIComponent(fz.name)}&palette=${encodeURIComponent(p.name)}`}
+                  href={`/admin/qr/${p.qr_token}?zug=${encodeURIComponent(zugName)}&fahrzeug=${encodeURIComponent(`M+${fz.m_nummer}`)}&bezeichnung=${encodeURIComponent(fz.name)}&palette=${encodeURIComponent(p.name)}`}
                   className="bg-gray-800 text-white rounded-lg px-3 py-2 text-sm font-medium active:bg-gray-900"
                 >
                   Label

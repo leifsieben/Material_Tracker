@@ -41,7 +41,7 @@ export interface Fahrzeug {
   id: string;
   zug_id: string;
   name: string;       // taktische Bezeichnung, z.B. "Puch 1"
-  m_nummer: string;   // militärische KFZ-Nummer, z.B. "M+12345"
+  m_nummer: number;   // militärische KFZ-Nummer (integer), z.B. 12345 → angezeigt als "M+12345"
   gruppe_id?: string | null;
   gruppe?: Gruppe;
 }

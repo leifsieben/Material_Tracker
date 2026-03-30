@@ -44,13 +44,14 @@ function AlleLabels() {
       ) as { data: (Fahrzeug & { paletten: Palette[] })[] | null };
 
       if (fahrzeugIdFilter && fz?.[0]) {
-        setFahrzeugName(fz[0].m_nummer + (fz[0].name !== fz[0].m_nummer ? ` · ${fz[0].name}` : ""));
+        const mAnzeige = `M+${fz[0].m_nummer}`;
+        setFahrzeugName(mAnzeige + (fz[0].name !== mAnzeige ? ` · ${fz[0].name}` : ""));
       }
 
       const liste: PaletteMitKontext[] = (fz ?? []).flatMap((f) =>
         f.paletten.map((p) => ({
           ...p,
-          fahrzeugMNummer: f.m_nummer,
+          fahrzeugMNummer: `M+${f.m_nummer}`,
           fahrzeugName: f.name,
           url: `${window.location.origin}/palette/${p.qr_token}`,
         }))
