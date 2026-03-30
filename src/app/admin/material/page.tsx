@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { supabase, getLagerPalette } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import type { Material, Palette, Fahrzeug } from "@/types";
 import { MATERIAL_TYP_LABEL, MaterialTyp } from "@/types";
@@ -25,6 +25,7 @@ interface EditForm {
 }
 
 function getLabelForPalette(p: PaletteMitFahrzeug) {
+  if (p.is_lager) return "📦 Im Lager";
   const fzLabel = p.fahrzeug
     ? `M+${p.fahrzeug.m_nummer}${p.fahrzeug.name !== `M+${p.fahrzeug.m_nummer}` ? ` (${p.fahrzeug.name})` : ""} – `
     : "";
@@ -62,33 +63,36 @@ export default function MaterialAdmin() {
       .eq("zug_id", zugId);
 
     const fahrzeugIds = (fz ?? []).map((f) => f.id);
-
-    if (fahrzeugIds.length === 0) {
-      setPaletten([]);
-      setPaletteIds([]);
-      setMaterialListe([]);
-      return;
-    }
-
-    const { data: pal } = await supabase
-      .from("palette")
-      .select("*")
-      .in("fahrzeug_id", fahrzeugIds)
-      .order("name");
-
     const fahrzeugMap = Object.fromEntries((fz ?? []).map((f) => [f.id, f]));
-    const palettenMitFz: PaletteMitFahrzeug[] = (pal ?? []).map((p) => ({
+
+    // Normal-Paletten + Lager-Palette parallel laden
+    const [normalPalRes, lagerPal] = await Promise.all([
+      fahrzeugIds.length > 0
+        ? supabase.from("palette").select("*").in("fahrzeug_id", fahrzeugIds).order("name")
+        : Promise.resolve({ data: [] }),
+      getLagerPalette(zugId).catch(() => null),
+    ]);
+
+    const normalPaletten: PaletteMitFahrzeug[] = ((normalPalRes.data ?? []) as PaletteMitFahrzeug[]).map((p) => ({
       ...p,
-      fahrzeug: fahrzeugMap[p.fahrzeug_id],
+      fahrzeug: fahrzeugMap[p.fahrzeug_id ?? ""],
     }));
 
-    const ids = palettenMitFz.map((p) => p.id);
-    setPaletten(palettenMitFz);
+    const lagerEintrag: PaletteMitFahrzeug | null = lagerPal
+      ? { ...lagerPal, fahrzeug_id: null, fahrzeug: undefined }
+      : null;
+
+    const allePaletten: PaletteMitFahrzeug[] = lagerEintrag
+      ? [...normalPaletten, lagerEintrag]
+      : normalPaletten;
+
+    const ids = allePaletten.map((p) => p.id);
+    setPaletten(allePaletten);
     setPaletteIds(ids);
 
     setForm((f) => ({
       ...f,
-      palette_id: f.palette_id || (palettenMitFz[0]?.id ?? ""),
+      palette_id: f.palette_id || (normalPaletten[0]?.id ?? lagerEintrag?.id ?? ""),
     }));
 
     if (ids.length === 0) {
@@ -106,7 +110,10 @@ export default function MaterialAdmin() {
       (mat ?? []).map((m) => ({
         ...m,
         palette: m.palette
-          ? { ...m.palette, fahrzeug: fahrzeugMap[m.palette.fahrzeug_id] }
+          ? {
+              ...m.palette,
+              fahrzeug: m.palette.is_lager ? undefined : fahrzeugMap[m.palette.fahrzeug_id],
+            }
           : undefined,
       }))
     );
@@ -339,7 +346,9 @@ export default function MaterialAdmin() {
       {/* ── Materialliste ── */}
       <div className="flex flex-col gap-2">
         {materialListe.map((m) => {
-          const label = m.palette
+          const label = m.palette?.is_lager
+            ? "📦 Im Lager"
+            : m.palette
             ? `M+${m.palette.fahrzeug?.m_nummer ?? ""} – ${m.palette.name}`
             : "—";
           const istEdit = editId === m.id;

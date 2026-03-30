@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { supabase, getLagerPalette } from "@/lib/supabase";
 import { speicherLokal } from "@/lib/db-sync";
 import type { Material, Palette, Fahrzeug, Gruppe, Transaktion } from "@/types";
 import { MATERIAL_TYP_LABEL, GRAD_OPTIONEN } from "@/types";
@@ -25,6 +25,7 @@ export default function Entnehmen({ params }: Props) {
   const [zugId, setZugId] = useState<string | null>(null);
   const [gruppen, setGruppen] = useState<Gruppe[]>([]);
   const [fahrzeuge, setFahrzeuge] = useState<FahrzeugMitPaletten[]>([]);
+  const [lagerPaletteId, setLagerPaletteId] = useState<string | null>(null);
 
   // Auswahl-Filter
   const [selectedGruppeId, setSelectedGruppeId] = useState<string>("");
@@ -71,17 +72,19 @@ export default function Entnehmen({ params }: Props) {
       const zId = fz.zug_id;
       setZugId(zId);
 
-      // Alle Gruppen und Fahrzeuge des Zugs laden
-      const [{ data: gr }, { data: fahrzeugeData }] = await Promise.all([
+      // Gruppen, Fahrzeuge und Lager-Palette parallel laden
+      const [{ data: gr }, { data: fahrzeugeData }, lagerPal] = await Promise.all([
         supabase.from("gruppe").select("*").eq("zug_id", zId).order("name"),
         supabase.from("fahrzeug")
           .select("*, paletten:palette(*), gruppe(*)")
           .eq("zug_id", zId)
           .order("m_nummer"),
+        getLagerPalette(zId).catch(() => null),
       ]);
 
       setGruppen(gr ?? []);
       setFahrzeuge(fahrzeugeData ?? []);
+      setLagerPaletteId(lagerPal?.id ?? null);
 
       // Vorauswahl: Fahrzeug und Palette aus QR-Token
       setSelectedFahrzeugId(pal.fahrzeug_id);
@@ -261,7 +264,7 @@ export default function Entnehmen({ params }: Props) {
       {/* ── Stufe 3: Palette ── */}
       <div className="mb-6">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Palette</p>
-        {sichtbarePaletten.length === 0 ? (
+        {sichtbarePaletten.length === 0 && !lagerPaletteId ? (
           <p className="text-sm text-gray-400">Keine Paletten gefunden.</p>
         ) : (
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
@@ -279,6 +282,20 @@ export default function Entnehmen({ params }: Props) {
                 {p.name}
               </button>
             ))}
+            {/* Lager-Palette immer sichtbar */}
+            {lagerPaletteId && (
+              <button
+                type="button"
+                onClick={() => waehlePalette(lagerPaletteId)}
+                className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors shrink-0 ${
+                  selectedPaletteId === lagerPaletteId
+                    ? "bg-amber-600 text-white border-amber-600"
+                    : "bg-amber-50 text-amber-700 border-amber-300"
+                }`}
+              >
+                📦 Im Lager
+              </button>
+            )}
           </div>
         )}
       </div>

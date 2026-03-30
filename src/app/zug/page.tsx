@@ -19,6 +19,7 @@ interface FahrzeugMitPaletten extends Fahrzeug {
 interface MaterialZeile extends Material {
   paletteName: string;
   fahrzeugLabel: string;
+  imLager?: boolean;
 }
 
 type Tab = "fahrzeuge" | "material";
@@ -34,6 +35,7 @@ function ZugUebersichtInner() {
   const [effectiveZugId, setEffectiveZugId] = useState<string | null>(null);
   const [alleZuege, setAlleZuege] = useState<Zug[]>([]);
   const [fahrzeuge, setFahrzeuge] = useState<FahrzeugMitPaletten[]>([]);
+  const [lagerMaterial, setLagerMaterial] = useState<Material[]>([]);
   const [zugName, setZugName] = useState<string>("");
   const [laden, setLaden] = useState(true);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -65,25 +67,32 @@ function ZugUebersichtInner() {
     setFehler(null);
 
     async function init() {
-      // Fahrzeuge mit Paletten
-      const { data: fzData, error: fzErr } = await supabase
-        .from("fahrzeug")
-        .select("*, paletten:palette(*)")
-        .eq("zug_id", effectiveZugId)
-        .order("m_nummer");
+      // Fahrzeuge mit Paletten + Zug-Name + Lager-Palette parallel
+      const [fzRes, zugRes, lagerRes] = await Promise.all([
+        supabase
+          .from("fahrzeug")
+          .select("*, paletten:palette(*)")
+          .eq("zug_id", effectiveZugId)
+          .order("m_nummer"),
+        supabase.from("zug").select("name").eq("id", effectiveZugId).single(),
+        supabase
+          .from("palette")
+          .select("id")
+          .eq("zug_id", effectiveZugId)
+          .eq("is_lager", true)
+          .maybeSingle(),
+      ]);
 
-      if (fzErr) {
+      if (fzRes.error) {
         setFehler("Daten konnten nicht geladen werden.");
         setLaden(false);
         return;
       }
 
-      const fzListe = (fzData ?? []) as FahrzeugMitPaletten[];
+      const fzListe = (fzRes.data ?? []) as FahrzeugMitPaletten[];
 
-      // Alle Paletten-IDs
+      // Material für Fahrzeug-Paletten
       const allePalettenIds = fzListe.flatMap((fz) => fz.paletten.map((p) => p.id));
-
-      // Material für alle Paletten laden
       if (allePalettenIds.length > 0) {
         const { data: matData } = await supabase
           .from("material")
@@ -96,28 +105,29 @@ function ZugUebersichtInner() {
           if (!matMap[m.palette_id]) matMap[m.palette_id] = [];
           matMap[m.palette_id].push(m);
         }
-
         for (const fz of fzListe) {
-          for (const p of fz.paletten) {
-            p.material = matMap[p.id] ?? [];
-          }
+          for (const p of fz.paletten) p.material = matMap[p.id] ?? [];
         }
       } else {
         for (const fz of fzListe) {
-          for (const p of fz.paletten) {
-            p.material = [];
-          }
+          for (const p of fz.paletten) p.material = [];
         }
       }
 
-      setFahrzeuge(fzListe);
+      // Material aus Lager-Palette
+      if (lagerRes.data?.id) {
+        const { data: lagerMat } = await supabase
+          .from("material")
+          .select("*")
+          .eq("palette_id", lagerRes.data.id)
+          .order("objekt");
+        setLagerMaterial(lagerMat ?? []);
+      } else {
+        setLagerMaterial([]);
+      }
 
-      const { data: zugData } = await supabase
-        .from("zug")
-        .select("name")
-        .eq("id", effectiveZugId)
-        .single();
-      setZugName(zugData?.name ?? eigenerZugName ?? "");
+      setFahrzeuge(fzListe);
+      setZugName(zugRes.data?.name ?? eigenerZugName ?? "");
       setLaden(false);
     }
     init();
@@ -128,7 +138,7 @@ function ZugUebersichtInner() {
     window.location.href = "/";
   }
 
-  // Flache Materialliste für den Material-Tab
+  // Flache Materialliste für den Material-Tab (inkl. Lager)
   const alleMaterialien = useMemo<MaterialZeile[]>(() => {
     const zeilen: MaterialZeile[] = [];
     for (const fz of fahrzeuge) {
@@ -139,8 +149,12 @@ function ZugUebersichtInner() {
         }
       }
     }
+    // Lager-Material
+    for (const m of lagerMaterial) {
+      zeilen.push({ ...m, paletteName: "Im Lager", fahrzeugLabel: "—", imLager: true });
+    }
     return zeilen;
-  }, [fahrzeuge]);
+  }, [fahrzeuge, lagerMaterial]);
 
   const materialNachTyp = useMemo(() => {
     const grouped: Record<string, MaterialZeile[]> = {};
@@ -329,8 +343,41 @@ function ZugUebersichtInner() {
                 </div>
               </section>
             ))}
-            {!laden && fahrzeuge.length === 0 && !fehler && (
+            {!laden && fahrzeuge.length === 0 && !fehler && lagerMaterial.length === 0 && (
               <p className="text-gray-400 text-sm">Keine Fahrzeuge in diesem Zug.</p>
+            )}
+
+            {/* ── Im Lager ── */}
+            {lagerMaterial.length > 0 && (
+              <section className="mb-6">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+                  📦 Im Lager
+                </h2>
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                  {lagerMaterial.map((m, i) => (
+                    <div
+                      key={m.id}
+                      className={`px-4 py-3 flex justify-between items-center ${
+                        i < lagerMaterial.length - 1 ? "border-b border-gray-100" : ""
+                      }`}
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{m.objekt}</p>
+                        {m.seriennummer && (
+                          <p className="text-xs font-mono text-gray-400">{m.seriennummer}</p>
+                        )}
+                        <p className="text-xs text-gray-400">{MATERIAL_TYP_LABEL[m.typ]}</p>
+                      </div>
+                      <span className={`text-sm font-semibold ${
+                        m.bestand_aktuell < m.bestand_initial ? "text-orange-600" : "text-gray-700"
+                      }`}>
+                        {m.bestand_aktuell}
+                        <span className="text-xs text-gray-400 font-normal"> / {m.bestand_initial}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
           </>
         )}
@@ -386,9 +433,15 @@ function ZugUebersichtInner() {
                                 <span className="text-gray-400 text-xs"> / {m.bestand_initial}</span>
                               </td>
                               <td className="py-2 text-xs text-gray-400">
-                                <span>{m.fahrzeugLabel}</span>
-                                <span className="text-gray-300 mx-1">/</span>
-                                <span>{m.paletteName}</span>
+                                {m.imLager ? (
+                                  <span className="text-amber-600 font-medium">📦 Im Lager</span>
+                                ) : (
+                                  <>
+                                    <span>{m.fahrzeugLabel}</span>
+                                    <span className="text-gray-300 mx-1">/</span>
+                                    <span>{m.paletteName}</span>
+                                  </>
+                                )}
                               </td>
                             </tr>
                           ))}

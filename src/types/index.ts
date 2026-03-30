@@ -48,9 +48,11 @@ export interface Fahrzeug {
 
 export interface Palette {
   id: string;
-  fahrzeug_id: string;
+  fahrzeug_id: string | null; // null bei Lager-Palette
+  zug_id?: string | null;     // gesetzt bei Lager-Palette
   name: string;
   qr_token: string;
+  is_lager?: boolean;
 }
 
 export interface Material {
