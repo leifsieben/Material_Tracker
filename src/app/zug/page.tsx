@@ -13,13 +13,8 @@ interface FahrzeugMitPaletten extends Fahrzeug {
 
 function ZugUebersichtInner() {
   const params = useSearchParams();
-  const { zugId: eigenerZugId, session } = useAuth();
+  const { zugId: eigenerZugId, zugName: eigenerZugName, session, user } = useAuth();
   const istZugfuehrer = !!session;
-
-  // Welcher Zug wird angezeigt:
-  // - Zugführer ohne param → eigener Zug
-  // - Zugführer mit param → der gewählte Zug
-  // - Soldat → muss zug_id-Param haben (kommt aus Palette-URL)
   const paramZugId = params.get("zug_id");
 
   const [effectiveZugId, setEffectiveZugId] = useState<string | null>(null);
@@ -29,18 +24,16 @@ function ZugUebersichtInner() {
   const [laden, setLaden] = useState(true);
   const [fehler, setFehler] = useState<string | null>(null);
 
-  // Effektiven Zug bestimmen sobald Auth geladen
+  // Effektiven Zug bestimmen
   useEffect(() => {
     if (istZugfuehrer) {
-      // Zugführer: param überschreibt eigenen Zug
       setEffectiveZugId(paramZugId ?? eigenerZugId ?? null);
     } else {
-      // Soldat: nur was in der URL steht
       setEffectiveZugId(paramZugId);
     }
   }, [istZugfuehrer, eigenerZugId, paramZugId]);
 
-  // Alle Züge für Dropdown (nur Zugführer)
+  // Alle Züge für Switcher (nur Zugführer)
   useEffect(() => {
     if (!istZugfuehrer) return;
     supabase
@@ -69,17 +62,21 @@ function ZugUebersichtInner() {
         setFahrzeuge(fz ?? []);
       }
 
-      // Zugname laden
       const { data: zugData } = await supabase
         .from("zug")
         .select("name")
         .eq("id", effectiveZugId)
         .single();
-      setZugName(zugData?.name ?? "");
+      setZugName(zugData?.name ?? eigenerZugName ?? "");
       setLaden(false);
     }
     init();
-  }, [effectiveZugId]);
+  }, [effectiveZugId, eigenerZugName]);
+
+  async function abmelden() {
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  }
 
   // Soldat ohne zug_id-Param
   if (!istZugfuehrer && !paramZugId) {
@@ -93,24 +90,26 @@ function ZugUebersichtInner() {
     );
   }
 
-  const backHref = istZugfuehrer ? "/admin" : "/";
+  const emailKurz = user?.email
+    ? user.email.length > 22
+      ? user.email.slice(0, user.email.indexOf("@") + 1) + "…"
+      : user.email
+    : "";
+
+  const istFremderZug = istZugfuehrer && effectiveZugId !== eigenerZugId;
 
   return (
-    <main className="max-w-lg mx-auto p-4">
-      <Link href={backHref} className="text-sm text-red-600 mb-4 inline-block">
-        ← {istZugfuehrer ? "Admin" : "Startseite"}
-      </Link>
+    <div className="min-h-screen flex flex-col">
 
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Zugübersicht</h1>
-          {zugName && <p className="text-sm text-gray-500">{zugName}</p>}
-        </div>
+      {/* Header — nur für eingeloggte Zugführer */}
+      {istZugfuehrer && (
+        <header className="bg-gray-900 text-white px-4 py-2.5 flex justify-between items-center shrink-0">
+          <Link href="/admin" className="text-xs font-bold tracking-widest uppercase text-gray-400 hover:text-gray-200">
+            ← Admin
+          </Link>
 
-        {/* Dropdown nur für Zugführer */}
-        {istZugfuehrer && alleZuege.length > 1 && (
-          <div className="flex flex-col items-end gap-1">
-            <label className="text-xs text-gray-400">Zug wechseln</label>
+          <div className="flex items-center gap-2">
+            {/* Zug-Switcher */}
             <select
               value={effectiveZugId ?? ""}
               onChange={(e) => {
@@ -120,68 +119,104 @@ function ZugUebersichtInner() {
                 window.history.pushState({}, "", url.toString());
                 setEffectiveZugId(newId);
               }}
-              className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white max-w-[160px]"
+              className="text-xs bg-gray-700 text-white border border-gray-600 rounded-md px-2 py-1 max-w-[130px] cursor-pointer"
+              title="Zug wechseln"
             >
-              {alleZuege.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.name}
-                </option>
-              ))}
+              {alleZuege.length > 0
+                ? alleZuege.map((z) => (
+                    <option key={z.id} value={z.id}>{z.name}</option>
+                  ))
+                : <option value={eigenerZugId ?? ""}>{eigenerZugName ?? "Mein Zug"}</option>
+              }
             </select>
-            {effectiveZugId !== eigenerZugId && (
+
+            {/* Eigener-Zug-Button wenn fremder Zug */}
+            {istFremderZug && (
               <button
                 onClick={() => setEffectiveZugId(eigenerZugId ?? null)}
-                className="text-xs text-red-600"
+                className="text-xs text-red-400 hover:text-red-300"
               >
-                Eigener Zug
+                Eigener
               </button>
             )}
+
+            <span className="text-xs text-gray-300">👤 {emailKurz}</span>
+            <button
+              onClick={abmelden}
+              className="text-xs bg-gray-700 hover:bg-gray-600 text-white rounded-md px-2.5 py-1"
+            >
+              Abmelden
+            </button>
           </div>
+        </header>
+      )}
+
+      <main className="max-w-lg mx-auto p-4 w-full">
+        {/* Soldat: Back-Link */}
+        {!istZugfuehrer && (
+          <Link href="/" className="text-sm text-red-600 mb-4 inline-block">← Startseite</Link>
         )}
-      </div>
 
-      {laden && <p className="text-gray-500">Wird geladen…</p>}
-      {fehler && <p className="text-red-600">{fehler}</p>}
-
-      {fahrzeuge.map((fz) => (
-        <section key={fz.id} className="mb-6">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-2">
-            🚗 M+{fz.m_nummer}
-            {fz.name !== `M+${fz.m_nummer}` && (
-              <span className="text-gray-400 font-normal normal-case">· {fz.name}</span>
-            )}
-          </h2>
-          <div className="flex flex-col gap-2">
-            {fz.paletten.map((p) => (
-              <Link
-                key={p.id}
-                href={`/palette/${p.qr_token}`}
-                className="block bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm active:bg-gray-50"
-              >
-                <span className="font-medium text-gray-900">{p.name}</span>
-                <span className="text-xs text-gray-400 ml-2">→ öffnen</span>
-              </Link>
-            ))}
-            {fz.paletten.length === 0 && (
-              <p className="text-sm text-gray-400 pl-1">Keine Paletten</p>
+        <div className="flex justify-between items-start mb-2 mt-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Zugübersicht</h1>
+            {zugName && (
+              <p className="text-sm text-gray-500 flex items-center gap-2">
+                {zugName}
+                {istFremderZug && (
+                  <span className="text-xs bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded">
+                    Fremdansicht
+                  </span>
+                )}
+              </p>
             )}
           </div>
-        </section>
-      ))}
+        </div>
 
-      {!laden && fahrzeuge.length === 0 && !fehler && (
-        <p className="text-gray-400 text-sm">Keine Fahrzeuge in diesem Zug.</p>
-      )}
+        {/* Wer hat was — ganz oben */}
+        {effectiveZugId && (
+          <Link
+            href={`/uebersicht/${effectiveZugId}`}
+            className="block text-center text-sm text-gray-500 border border-gray-200 rounded-xl px-4 py-3 mb-6 mt-4 active:bg-gray-50"
+          >
+            Wer hat was? →
+          </Link>
+        )}
 
-      {effectiveZugId && (
-        <Link
-          href={`/uebersicht/${effectiveZugId}`}
-          className="block text-center text-sm text-gray-500 border border-gray-200 rounded-xl px-4 py-3 mt-4 active:bg-gray-50"
-        >
-          Wer hat was? →
-        </Link>
-      )}
-    </main>
+        {laden && <p className="text-gray-500">Wird geladen…</p>}
+        {fehler && <p className="text-red-600">{fehler}</p>}
+
+        {fahrzeuge.map((fz) => (
+          <section key={fz.id} className="mb-6">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-2">
+              🚗 M+{fz.m_nummer}
+              {fz.name !== `M+${fz.m_nummer}` && (
+                <span className="text-gray-400 font-normal normal-case">· {fz.name}</span>
+              )}
+            </h2>
+            <div className="flex flex-col gap-2">
+              {fz.paletten.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/palette/${p.qr_token}`}
+                  className="block bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm active:bg-gray-50"
+                >
+                  <span className="font-medium text-gray-900">{p.name}</span>
+                  <span className="text-xs text-gray-400 ml-2">→ öffnen</span>
+                </Link>
+              ))}
+              {fz.paletten.length === 0 && (
+                <p className="text-sm text-gray-400 pl-1">Keine Paletten</p>
+              )}
+            </div>
+          </section>
+        ))}
+
+        {!laden && fahrzeuge.length === 0 && !fehler && (
+          <p className="text-gray-400 text-sm">Keine Fahrzeuge in diesem Zug.</p>
+        )}
+      </main>
+    </div>
   );
 }
 
