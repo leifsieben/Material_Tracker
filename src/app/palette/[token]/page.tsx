@@ -55,7 +55,7 @@ export default function PalettenAnsicht({ params }: Props) {
       <p className="text-gray-500 text-sm mb-6">{material.length} Materialposten</p>
 
       {/* Aktionsbuttons */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex gap-3 mb-3">
         <Link
           href={`/palette/${token}/entnehmen`}
           className="flex-1 text-center bg-red-600 text-white rounded-xl px-4 py-3 font-semibold active:bg-red-700"
@@ -69,6 +69,12 @@ export default function PalettenAnsicht({ params }: Props) {
           Zurückgeben
         </Link>
       </div>
+      <Link
+        href={`/palette/${token}/uebersicht`}
+        className="block text-center text-sm text-gray-500 border border-gray-200 rounded-xl px-4 py-2.5 mb-6 active:bg-gray-50"
+      >
+        Wer hat was? →
+      </Link>
 
       {/* Materialliste */}
       <section>
