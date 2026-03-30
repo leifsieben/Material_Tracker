@@ -53,6 +53,7 @@ export default function Login() {
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-6">
       <div className="w-full max-w-sm">
+        <Link href="/" className="text-sm text-red-600 mb-6 inline-block">← Startseite</Link>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Zugführer Login</h1>
         <p className="text-gray-500 text-sm mb-8">Nur für Zugführer mit Account</p>
 

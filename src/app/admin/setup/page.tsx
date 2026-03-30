@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 export default function ZugSetup() {
@@ -64,6 +65,8 @@ export default function ZugSetup() {
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-6">
       <div className="w-full max-w-sm">
+        <Link href="/login" className="text-sm text-red-600 mb-6 inline-block">← Abbrechen</Link>
+
         {/* Fortschrittsanzeige */}
         <div className="flex items-center gap-2 mb-8">
           <div className="flex items-center gap-1.5">

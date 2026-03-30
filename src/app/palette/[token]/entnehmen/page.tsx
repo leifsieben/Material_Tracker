@@ -21,6 +21,7 @@ export default function Entnehmen({ params }: Props) {
   const [laden, setLaden] = useState(true);
   const [senden, setSenden] = useState(false);
   const [erfolg, setErfolg] = useState(false);
+  const [bestandFehler, setBestandFehler] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     grad: "Wm",
@@ -56,9 +57,19 @@ export default function Entnehmen({ params }: Props) {
   const set = (key: string, value: string | number) =>
     setForm((f) => ({ ...f, [key]: value }));
 
+  // Aktuell gewähltes Material-Objekt
+  const gewaehlteMat = material.find((m) => m.id === form.material_id);
+
   async function absenden(e: React.FormEvent) {
     e.preventDefault();
     if (!form.vorname || !form.nachname || !form.material_id) return;
+    setBestandFehler(null);
+
+    // Bestand-Validierung
+    if (gewaehlteMat && form.anzahl > gewaehlteMat.bestand_aktuell) {
+      setBestandFehler(`Nicht genug Bestand. Verfügbar: ${gewaehlteMat.bestand_aktuell} Stück.`);
+      return;
+    }
     setSenden(true);
 
     const transaktion: Omit<Transaktion, "id"> = {
@@ -162,15 +173,29 @@ export default function Entnehmen({ params }: Props) {
 
         {/* Anzahl */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Anzahl</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Anzahl
+            {gewaehlteMat && (
+              <span className="ml-2 text-xs text-gray-400 font-normal">
+                (max. {gewaehlteMat.bestand_aktuell} verfügbar)
+              </span>
+            )}
+          </label>
           <input
             type="number"
             min={1}
+            max={gewaehlteMat?.bestand_aktuell ?? undefined}
             required
             value={form.anzahl}
-            onChange={(e) => set("anzahl", parseInt(e.target.value))}
+            onChange={(e) => {
+              set("anzahl", parseInt(e.target.value) || 1);
+              setBestandFehler(null);
+            }}
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5"
           />
+          {bestandFehler && (
+            <p className="text-sm text-red-600 mt-1">{bestandFehler}</p>
+          )}
         </div>
 
         {/* Bemerkung */}

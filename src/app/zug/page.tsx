@@ -31,6 +31,7 @@ export default function ZugUebersicht() {
 
   return (
     <main className="max-w-lg mx-auto p-4">
+      <Link href="/" className="text-sm text-red-600 mb-4 inline-block">← Startseite</Link>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Zugübersicht</h1>
 
       {laden && <p className="text-gray-500">Wird geladen…</p>}

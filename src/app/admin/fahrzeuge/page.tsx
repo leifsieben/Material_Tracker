@@ -3,44 +3,60 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth-context";
 import type { Fahrzeug, Palette } from "@/types";
+import type { Gruppe } from "@/types";
 
 interface FahrzeugMitPaletten extends Fahrzeug {
   paletten: Palette[];
+  gruppe?: Gruppe;
 }
 
 export default function FahrzeugeAdmin() {
+  const { zugId, zugName } = useAuth();
   const [fahrzeuge, setFahrzeuge] = useState<FahrzeugMitPaletten[]>([]);
-  const [zugName, setZugName] = useState<string>("");
-  const [formFz, setFormFz] = useState({ m_nummer: "", name: "" });
+  const [gruppen, setGruppen] = useState<Gruppe[]>([]);
+  const [formFz, setFormFz] = useState({ m_nummer: "", name: "", gruppe_id: "" });
   const [neuePalette, setNeuePalette] = useState<Record<string, string>>({});
+  const [fehler, setFehler] = useState<string | null>(null);
 
   async function laden() {
-    // Zug-Name für Kontext
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) {
-      const { data: zug } = await supabase
-        .from("zug").select("name").eq("zugfuehrer_id", session.user.id).single();
-      if (zug) setZugName(zug.name);
-    }
-
-    const { data } = await supabase
+    if (!zugId) return;
+    const { data: fz } = await supabase
       .from("fahrzeug")
-      .select("*, paletten:palette(*)")
+      .select("*, paletten:palette(*), gruppe(*)")
+      .eq("zug_id", zugId)
       .order("m_nummer");
-    setFahrzeuge(data ?? []);
+    const { data: gr } = await supabase
+      .from("gruppe")
+      .select("*")
+      .eq("zug_id", zugId)
+      .order("name");
+    setFahrzeuge(fz ?? []);
+    setGruppen(gr ?? []);
   }
 
-  useEffect(() => { laden(); }, []);
+  useEffect(() => { laden(); }, [zugId]);
 
   async function fahrzeugHinzufuegen(e: React.FormEvent) {
     e.preventDefault();
-    if (!formFz.m_nummer.trim()) return;
-    await supabase.from("fahrzeug").insert({
+    setFehler(null);
+    if (!formFz.m_nummer.trim() || !zugId) return;
+
+    const { error } = await supabase.from("fahrzeug").insert({
+      zug_id: zugId,
       m_nummer: formFz.m_nummer.trim().toUpperCase(),
       name: formFz.name.trim() || formFz.m_nummer.trim().toUpperCase(),
+      gruppe_id: formFz.gruppe_id || null,
     });
-    setFormFz({ m_nummer: "", name: "" });
+
+    if (error) {
+      setFehler(error.message.includes("unique")
+        ? `M-Nummer ${formFz.m_nummer.toUpperCase()} existiert bereits.`
+        : `Fehler: ${error.message}`);
+      return;
+    }
+    setFormFz({ m_nummer: "", name: "", gruppe_id: "" });
     laden();
   }
 
@@ -48,12 +64,13 @@ export default function FahrzeugeAdmin() {
     const name = neuePalette[fahrzeugId];
     if (!name?.trim()) return;
     const token = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
-    await supabase.from("palette").insert({
-      fahrzeug_id: fahrzeugId,
-      name: name.trim(),
-      qr_token: token,
-    });
+    await supabase.from("palette").insert({ fahrzeug_id: fahrzeugId, name: name.trim(), qr_token: token });
     setNeuePalette((p) => ({ ...p, [fahrzeugId]: "" }));
+    laden();
+  }
+
+  async function gruppeAendern(fahrzeugId: string, gruppeId: string) {
+    await supabase.from("fahrzeug").update({ gruppe_id: gruppeId || null }).eq("id", fahrzeugId);
     laden();
   }
 
@@ -80,10 +97,9 @@ export default function FahrzeugeAdmin() {
       {/* Neues Fahrzeug */}
       <form onSubmit={fahrzeugHinzufuegen} className="bg-white border border-gray-200 rounded-xl p-4 mb-6 flex flex-col gap-3">
         <h2 className="font-semibold text-gray-800 text-sm uppercase tracking-wide">Fahrzeug hinzufügen</h2>
+
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">
-            M-Nummer <span className="text-red-500">*</span>
-          </label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">M-Nummer <span className="text-red-500">*</span></label>
           <input
             value={formFz.m_nummer}
             onChange={(e) => setFormFz((f) => ({ ...f, m_nummer: e.target.value }))}
@@ -91,53 +107,83 @@ export default function FahrzeugeAdmin() {
             required
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 font-mono uppercase tracking-wider"
           />
-          <p className="text-xs text-gray-400 mt-1">Militärische KFZ-Nummer (einzigartig)</p>
         </div>
+
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">
-            Bezeichnung <span className="text-gray-400">(optional)</span>
-          </label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Bezeichnung <span className="text-gray-400">(optional)</span></label>
           <input
             value={formFz.name}
             onChange={(e) => setFormFz((f) => ({ ...f, name: e.target.value }))}
             placeholder="z.B. Puch 1, LKW Küche"
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5"
           />
-          <p className="text-xs text-gray-400 mt-1">Taktische Bezeichnung für interne Anzeige</p>
         </div>
-        <button
-          type="submit"
-          className="w-full bg-gray-800 text-white rounded-xl py-3 font-semibold active:bg-gray-900"
-        >
+
+        {gruppen.length > 0 && (
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Gruppe <span className="text-gray-400">(optional)</span></label>
+            <select
+              value={formFz.gruppe_id}
+              onChange={(e) => setFormFz((f) => ({ ...f, gruppe_id: e.target.value }))}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white"
+            >
+              <option value="">— Keine Gruppe —</option>
+              {gruppen.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {fehler && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{fehler}</p>}
+
+        <button type="submit" className="w-full bg-gray-800 text-white rounded-xl py-3 font-semibold active:bg-gray-900">
           Fahrzeug hinzufügen
         </button>
       </form>
 
-      {/* Fahrzeugliste */}
       {fahrzeuge.length === 0 && (
         <p className="text-gray-400 text-sm text-center py-8">Noch keine Fahrzeuge angelegt.</p>
       )}
 
       {fahrzeuge.map((fz) => (
         <section key={fz.id} className="mb-4 bg-white border border-gray-200 rounded-xl overflow-hidden">
-          {/* Fahrzeug-Header */}
           <div className="bg-gray-800 text-white px-4 py-3 flex justify-between items-center">
-            <div>
-              <p className="font-bold font-mono tracking-wider">{fz.m_nummer}</p>
-              {fz.name !== fz.m_nummer && (
-                <p className="text-xs text-gray-300 mt-0.5">{fz.name}</p>
+            <div className="flex items-center gap-2">
+              <div>
+                <p className="font-bold font-mono tracking-wider">{fz.m_nummer}</p>
+                {fz.name !== fz.m_nummer && <p className="text-xs text-gray-300 mt-0.5">{fz.name}</p>}
+              </div>
+              {fz.gruppe && (
+                <span
+                  className="text-xs font-semibold px-2 py-0.5 rounded-full text-white ml-1"
+                  style={{ backgroundColor: fz.gruppe.farbe }}
+                >
+                  {fz.gruppe.name}
+                </span>
               )}
             </div>
-            <button
-              onClick={() => fahrzeugLoeschen(fz.id)}
-              className="text-xs text-red-300 underline"
-            >
-              Löschen
-            </button>
+            <button onClick={() => fahrzeugLoeschen(fz.id)} className="text-xs text-red-300 underline">Löschen</button>
           </div>
 
           <div className="p-4">
-            {/* Palettenliste */}
+            {/* Gruppe ändern */}
+            {gruppen.length > 0 && (
+              <div className="mb-3">
+                <select
+                  value={fz.gruppe_id ?? ""}
+                  onChange={(e) => gruppeAendern(fz.id, e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs bg-white text-gray-600"
+                >
+                  <option value="">— Keine Gruppe —</option>
+                  {gruppen.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Paletten */}
             <div className="flex flex-col gap-2 mb-3">
               {fz.paletten.map((p) => (
                 <div key={p.id} className="flex justify-between items-center bg-gray-50 rounded-lg px-3 py-2.5">
@@ -147,20 +193,14 @@ export default function FahrzeugeAdmin() {
                   </div>
                   <div className="flex gap-3 items-center">
                     <Link
-                      href={`/admin/qr/${p.qr_token}?zug=${encodeURIComponent(zugName)}&fahrzeug=${encodeURIComponent(fz.m_nummer)}&bezeichnung=${encodeURIComponent(fz.name)}&palette=${encodeURIComponent(p.name)}`}
+                      href={`/admin/qr/${p.qr_token}?zug=${encodeURIComponent(zugName ?? "")}&fahrzeug=${encodeURIComponent(fz.m_nummer)}&bezeichnung=${encodeURIComponent(fz.name)}&palette=${encodeURIComponent(p.name)}${fz.gruppe ? `&gruppe=${encodeURIComponent(fz.gruppe.name)}&gruppefarbe=${encodeURIComponent(fz.gruppe.farbe)}` : ""}`}
                       className="text-xs text-blue-600 font-medium"
-                    >
-                      QR
-                    </Link>
-                    <button onClick={() => paletteLoeschen(p.id)} className="text-xs text-red-500">
-                      Löschen
-                    </button>
+                    >QR</Link>
+                    <button onClick={() => paletteLoeschen(p.id)} className="text-xs text-red-500">Löschen</button>
                   </div>
                 </div>
               ))}
-              {fz.paletten.length === 0 && (
-                <p className="text-xs text-gray-400 py-1">Noch keine Paletten</p>
-              )}
+              {fz.paletten.length === 0 && <p className="text-xs text-gray-400 py-1">Noch keine Paletten</p>}
             </div>
 
             {/* Neue Palette */}
@@ -170,14 +210,10 @@ export default function FahrzeugeAdmin() {
                 onChange={(e) => setNeuePalette((p) => ({ ...p, [fz.id]: e.target.value }))}
                 placeholder="Neue Palette, z.B. Palette A"
                 className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                onKeyDown={(e) => e.key === "Enter" && paletteHinzufuegen(fz.id)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), paletteHinzufuegen(fz.id))}
               />
-              <button
-                onClick={() => paletteHinzufuegen(fz.id)}
-                className="bg-red-600 text-white rounded-lg px-4 py-2 text-sm font-medium active:bg-red-700"
-              >
-                +
-              </button>
+              <button onClick={() => paletteHinzufuegen(fz.id)}
+                className="bg-red-600 text-white rounded-lg px-4 py-2 text-sm font-medium active:bg-red-700">+</button>
             </div>
           </div>
         </section>

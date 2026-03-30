@@ -20,11 +20,30 @@ export interface Zug {
   zugfuehrer_id: string;
 }
 
+export const GRUPPE_FARBEN: { label: string; hex: string; tw: string }[] = [
+  { label: "Rot",    hex: "#dc2626", tw: "bg-red-600" },
+  { label: "Blau",   hex: "#2563eb", tw: "bg-blue-600" },
+  { label: "Grün",   hex: "#16a34a", tw: "bg-green-600" },
+  { label: "Gelb",   hex: "#ca8a04", tw: "bg-yellow-600" },
+  { label: "Orange", hex: "#ea580c", tw: "bg-orange-600" },
+  { label: "Lila",   hex: "#9333ea", tw: "bg-purple-600" },
+  { label: "Grau",   hex: "#6b7280", tw: "bg-gray-500" },
+];
+
+export interface Gruppe {
+  id: string;
+  zug_id: string;
+  name: string;
+  farbe: string; // hex
+}
+
 export interface Fahrzeug {
   id: string;
   zug_id: string;
   name: string;       // taktische Bezeichnung, z.B. "Puch 1"
   m_nummer: string;   // militärische KFZ-Nummer, z.B. "M+12345"
+  gruppe_id?: string | null;
+  gruppe?: Gruppe;
 }
 
 export interface Palette {
