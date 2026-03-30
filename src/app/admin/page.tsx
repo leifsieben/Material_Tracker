@@ -46,7 +46,7 @@ export default function AdminDashboard() {
             <p className="text-sm text-gray-500">Offene Entnahmen im Zug anzeigen</p>
           </Link>
         )}
-        <Link href="/zug"
+        <Link href={zugId ? `/zug?zug_id=${zugId}` : "/zug"}
           className="block bg-red-50 border border-red-200 rounded-xl px-4 py-4 active:bg-red-100">
           <p className="font-semibold text-red-700">→ Zugübersicht</p>
         </Link>

@@ -14,14 +14,16 @@ export default function PalettenAnsicht({ params }: Props) {
   const { token } = React.use(params);
   const [palette, setPalette] = useState<Palette | null>(null);
   const [material, setMaterial] = useState<Material[]>([]);
+  const [zugId, setZugId] = useState<string | null>(null);
   const [laden, setLaden] = useState(true);
   const [fehler, setFehler] = useState<string | null>(null);
 
   useEffect(() => {
-    async function laden() {
+    async function init() {
+      // Palette + Fahrzeug (für zug_id) laden
       const { data: pal, error: palErr } = await supabase
         .from("palette")
-        .select("*")
+        .select("*, fahrzeug:fahrzeug_id(zug_id)")
         .eq("qr_token", token)
         .single();
 
@@ -32,6 +34,9 @@ export default function PalettenAnsicht({ params }: Props) {
       }
 
       setPalette(pal);
+      // zug_id aus dem Fahrzeug-Join
+      const fz = pal.fahrzeug as { zug_id: string } | null;
+      if (fz?.zug_id) setZugId(fz.zug_id);
 
       const { data: mat } = await supabase
         .from("material")
@@ -41,15 +46,17 @@ export default function PalettenAnsicht({ params }: Props) {
       setMaterial(mat ?? []);
       setLaden(false);
     }
-    laden();
+    init();
   }, [token]);
 
   if (laden) return <main className="p-4"><p className="text-gray-500">Wird geladen…</p></main>;
   if (fehler) return <main className="p-4"><p className="text-red-600">{fehler}</p></main>;
 
+  const backHref = zugId ? `/zug?zug_id=${zugId}` : "/zug";
+
   return (
     <main className="max-w-lg mx-auto p-4">
-      <Link href="/zug" className="text-sm text-red-600 mb-4 inline-block">← Zurück</Link>
+      <Link href={backHref} className="text-sm text-red-600 mb-4 inline-block">← Zugübersicht</Link>
 
       <h1 className="text-2xl font-bold text-gray-900 mb-1">{palette?.name}</h1>
       <p className="text-gray-500 text-sm mb-6">{material.length} Materialposten</p>
