@@ -173,14 +173,14 @@ export default function FahrzeugeAdmin() {
 
   // ── Löschen ──
   async function fahrzeugLoeschen(id: string) {
-    if (!confirm("Fahrzeug und alle Paletten löschen?")) return;
+    if (!confirm("Fahrzeug und alle Lagerorte löschen?")) return;
     await supabase.from("fahrzeug").delete().eq("id", id);
     if (editFzId === id) fzEditAbbrechen();
     laden();
   }
 
   async function paletteLoeschen(id: string) {
-    if (!confirm("Palette löschen?")) return;
+    if (!confirm("Lagerort löschen?")) return;
     await supabase.from("palette").delete().eq("id", id);
     if (editPaletteId === id) paletteEditAbbrechen();
     laden();
@@ -190,7 +190,7 @@ export default function FahrzeugeAdmin() {
     <main className="max-w-lg mx-auto p-4">
       <Link href="/admin" className="text-sm text-red-600 mb-4 inline-block">← Admin</Link>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Fahrzeuge & Paletten</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Fahrzeuge & Lagerorte</h1>
         {zugName && <p className="text-sm text-gray-500">{zugName}</p>}
       </div>
 
@@ -397,7 +397,7 @@ export default function FahrzeugeAdmin() {
                   )}
                 </div>
               ))}
-              {fz.paletten.length === 0 && <p className="text-xs text-gray-400 py-1">Noch keine Paletten</p>}
+              {fz.paletten.length === 0 && <p className="text-xs text-gray-400 py-1">Noch keine Lagerorte</p>}
             </div>
 
             {/* Neue Palette */}
@@ -405,7 +405,7 @@ export default function FahrzeugeAdmin() {
               <input
                 value={neuePalette[fz.id] ?? ""}
                 onChange={(e) => setNeuePalette((p) => ({ ...p, [fz.id]: e.target.value }))}
-                placeholder="Neue Palette, z.B. Palette A"
+                placeholder="Neuer Lagerort, z.B. Lagerort A"
                 className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm"
                 onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), paletteHinzufuegen(fz.id))}
               />

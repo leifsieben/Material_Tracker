@@ -171,7 +171,7 @@ function ZugUebersichtInner() {
       <main className="max-w-lg mx-auto p-4">
         <Link href="/" className="text-sm text-red-600 mb-4 inline-block">← Startseite</Link>
         <p className="text-gray-500 text-sm mt-8 text-center">
-          Bitte scanne den QR-Code auf einer Palette um zur Zugübersicht zu gelangen.
+          Bitte scanne den QR-Code auf einem Lagerort um zur Zugübersicht zu gelangen.
         </p>
       </main>
     );
@@ -338,7 +338,7 @@ function ZugUebersichtInner() {
                     </Link>
                   ))}
                   {fz.paletten.length === 0 && (
-                    <p className="text-sm text-gray-400 pl-1">Keine Paletten</p>
+                    <p className="text-sm text-gray-400 pl-1">Keine Lagerorte</p>
                   )}
                 </div>
               </section>

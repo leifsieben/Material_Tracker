@@ -21,8 +21,8 @@ export default function AdminDashboard() {
       <div className="flex flex-col gap-3">
         <Link href="/admin/fahrzeuge"
           className="block bg-white border border-gray-200 rounded-xl px-4 py-4 shadow-sm active:bg-gray-50">
-          <p className="font-semibold text-gray-900">🚗 Fahrzeuge & Paletten</p>
-          <p className="text-sm text-gray-500">Fahrzeuge (M-Nummer), Paletten verwalten</p>
+          <p className="font-semibold text-gray-900">🚗 Fahrzeuge & Lagerorte</p>
+          <p className="text-sm text-gray-500">Fahrzeuge (M-Nummer), Lagerorte verwalten</p>
         </Link>
         <Link href="/admin/gruppen"
           className="block bg-white border border-gray-200 rounded-xl px-4 py-4 shadow-sm active:bg-gray-50">
@@ -37,7 +37,7 @@ export default function AdminDashboard() {
         <Link href="/admin/qr"
           className="block bg-white border border-gray-200 rounded-xl px-4 py-4 shadow-sm active:bg-gray-50">
           <p className="font-semibold text-gray-900">📱 QR-Codes</p>
-          <p className="text-sm text-gray-500">QR-Labels für Paletten drucken</p>
+          <p className="text-sm text-gray-500">QR-Labels für Lagerorte drucken</p>
         </Link>
         {zugId && (
           <Link href={`/uebersicht/${zugId}`}

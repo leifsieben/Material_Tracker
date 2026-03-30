@@ -90,7 +90,7 @@ export default function QRUebersicht() {
               </div>
             ))}
             {fz.paletten.length === 0 && (
-              <p className="text-sm text-gray-400 pl-1">Keine Paletten</p>
+              <p className="text-sm text-gray-400 pl-1">Keine Lagerorte</p>
             )}
           </div>
         </section>

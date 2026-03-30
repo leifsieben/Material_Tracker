@@ -28,7 +28,7 @@ export default function PalettenAnsicht({ params }: Props) {
         .single();
 
       if (palErr || !pal) {
-        setFehler("Palette nicht gefunden.");
+        setFehler("Lagerort nicht gefunden.");
         setLaden(false);
         return;
       }
@@ -102,7 +102,7 @@ export default function PalettenAnsicht({ params }: Props) {
             </div>
           ))}
           {material.length === 0 && (
-            <p className="text-gray-400 text-sm">Kein Material auf dieser Palette.</p>
+            <p className="text-gray-400 text-sm">Kein Material in diesem Lagerort.</p>
           )}
         </div>
       </section>

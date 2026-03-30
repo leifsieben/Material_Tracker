@@ -58,7 +58,7 @@ function EinzelLabel({ token }: { token: string }) {
             </div>
             <div className="qr-label-divider" />
             <div className="qr-label-row">
-              <span className="qr-label-field">Palette</span>
+              <span className="qr-label-field">Lagerort</span>
               <span className="qr-label-value">{palette}</span>
             </div>
             <div className="qr-label-divider" />

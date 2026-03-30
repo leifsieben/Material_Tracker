@@ -261,8 +261,8 @@ export default function MaterialAdmin() {
 
       {paletten.length === 0 && zugId && (
         <p className="text-sm text-amber-700 bg-amber-50 rounded-xl px-4 py-3 mb-6">
-          Noch keine Paletten vorhanden. Zuerst unter{" "}
-          <Link href="/admin/fahrzeuge" className="underline">Fahrzeuge & Paletten</Link> eine Palette anlegen.
+          Noch keine Lagerorte vorhanden. Zuerst unter{" "}
+          <Link href="/admin/fahrzeuge" className="underline">Fahrzeuge & Lagerorte</Link> einen Lagerort anlegen.
         </p>
       )}
 
@@ -271,14 +271,14 @@ export default function MaterialAdmin() {
         <h2 className="font-semibold text-gray-800">Neues Material</h2>
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Palette <span className="text-red-500">*</span></label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Lagerort <span className="text-red-500">*</span></label>
           <select
             value={form.palette_id}
             onChange={(e) => setForm((f) => ({ ...f, palette_id: e.target.value }))}
             required
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white"
           >
-            <option value="">— Palette wählen —</option>
+            <option value="">— Lagerort wählen —</option>
             {paletten.map((p) => (
               <option key={p.id} value={p.id}>{getLabelForPalette(p)}</option>
             ))}
@@ -428,7 +428,7 @@ export default function MaterialAdmin() {
 
                 {/* Palette / Fahrzeug */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Palette (Lagerort)</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Lagerort</label>
                   <select
                     value={editForm.palette_id}
                     onChange={(e) => setEditForm((f) => f && ({ ...f, palette_id: e.target.value }))}

@@ -113,7 +113,7 @@ function AlleLabels() {
         </div>
         {laden && <p className="text-gray-500 mt-4">Wird geladen…</p>}
         {!laden && paletten.length === 0 && (
-          <p className="text-gray-400 mt-4">Keine Paletten gefunden.</p>
+          <p className="text-gray-400 mt-4">Keine Lagerorte gefunden.</p>
         )}
       </div>
 
@@ -139,7 +139,7 @@ function AlleLabels() {
               </div>
               <div className="qr-label-divider" />
               <div className="qr-label-row">
-                <span className="qr-label-field">Palette</span>
+                <span className="qr-label-field">Lagerort</span>
                 <span className="qr-label-value">{p.name}</span>
               </div>
               <div className="qr-label-divider" />
