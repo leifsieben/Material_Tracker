@@ -7,6 +7,14 @@ import { useAuth } from "@/lib/auth-context";
 import type { Gruppe } from "@/types";
 import { GRUPPE_FARBEN } from "@/types";
 
+/** Stellt sicher dass immer ein gültiger Hex-Wert zurückkommt.
+ *  Alte Einträge haben u.U. den Tailwind-Klassennamen gespeichert. */
+function resolveHex(farbe: string): string {
+  if (farbe?.startsWith("#")) return farbe;
+  const match = GRUPPE_FARBEN.find((f) => f.tw === farbe || f.label === farbe);
+  return match?.hex ?? "#6b7280";
+}
+
 export default function GruppenAdmin() {
   const { zugId } = useAuth();
   const [gruppen, setGruppen] = useState<Gruppe[]>([]);
@@ -117,10 +125,10 @@ export default function GruppenAdmin() {
         {gruppen.map((g) => (
           <div key={g.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3 flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: g.farbe }} />
+              <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: resolveHex(g.farbe) }} />
               <span
                 className="text-sm font-semibold px-2.5 py-1 rounded-full text-white"
-                style={{ backgroundColor: g.farbe }}
+                style={{ backgroundColor: resolveHex(g.farbe) }}
               >
                 {g.name}
               </span>
