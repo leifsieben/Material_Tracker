@@ -39,10 +39,6 @@ export default function AdminDashboard() {
           <p className="font-semibold text-gray-900">📱 QR-Codes</p>
           <p className="text-sm text-gray-500">QR-Labels für Paletten drucken</p>
         </Link>
-        <Link href="/zug"
-          className="block bg-red-50 border border-red-200 rounded-xl px-4 py-4 active:bg-red-100">
-          <p className="font-semibold text-red-700">→ Zugübersicht</p>
-        </Link>
         {zugId && (
           <Link href={`/uebersicht/${zugId}`}
             className="block bg-white border border-gray-200 rounded-xl px-4 py-4 shadow-sm active:bg-gray-50">
@@ -50,6 +46,10 @@ export default function AdminDashboard() {
             <p className="text-sm text-gray-500">Offene Entnahmen im Zug anzeigen</p>
           </Link>
         )}
+        <Link href="/zug"
+          className="block bg-red-50 border border-red-200 rounded-xl px-4 py-4 active:bg-red-100">
+          <p className="font-semibold text-red-700">→ Zugübersicht</p>
+        </Link>
       </div>
     </main>
   );
