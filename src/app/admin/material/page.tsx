@@ -19,6 +19,8 @@ export default function MaterialAdmin() {
   const { zugId } = useAuth();
   const [materialListe, setMaterialListe] = useState<MaterialMitPalette[]>([]);
   const [paletten, setPaletten] = useState<PaletteMitFahrzeug[]>([]);
+  const [paletteIds, setPaletteIds] = useState<string[]>([]);
+  const [fehler, setFehler] = useState<string | null>(null);
   const [form, setForm] = useState({
     palette_id: "",
     typ: "klass" as MaterialTyp,
@@ -30,7 +32,6 @@ export default function MaterialAdmin() {
   async function laden() {
     if (!zugId) return;
 
-    // Load palettes with their vehicles, filtered by zug
     const { data: fz } = await supabase
       .from("fahrzeug")
       .select("id, name, m_nummer, zug_id")
@@ -40,6 +41,7 @@ export default function MaterialAdmin() {
 
     if (fahrzeugIds.length === 0) {
       setPaletten([]);
+      setPaletteIds([]);
       setMaterialListe([]);
       return;
     }
@@ -56,15 +58,16 @@ export default function MaterialAdmin() {
       fahrzeug: fahrzeugMap[p.fahrzeug_id],
     }));
 
+    const ids = palettenMitFz.map((p) => p.id);
     setPaletten(palettenMitFz);
+    setPaletteIds(ids);
 
-    if (palettenMitFz.length > 0 && !form.palette_id) {
-      setForm((f) => ({ ...f, palette_id: palettenMitFz[0].id }));
-    }
+    setForm((f) => ({
+      ...f,
+      palette_id: f.palette_id || (palettenMitFz[0]?.id ?? ""),
+    }));
 
-    // Load materials for these palettes
-    const paletteIds = palettenMitFz.map((p) => p.id);
-    if (paletteIds.length === 0) {
+    if (ids.length === 0) {
       setMaterialListe([]);
       return;
     }
@@ -72,43 +75,78 @@ export default function MaterialAdmin() {
     const { data: mat } = await supabase
       .from("material")
       .select("*, palette(*)")
-      .in("palette_id", paletteIds)
+      .in("palette_id", ids)
       .order("objekt");
 
-    const matMitFz: MaterialMitPalette[] = (mat ?? []).map((m) => ({
-      ...m,
-      palette: m.palette
-        ? { ...m.palette, fahrzeug: fahrzeugMap[m.palette.fahrzeug_id] }
-        : undefined,
-    }));
-
-    setMaterialListe(matMitFz);
+    setMaterialListe(
+      (mat ?? []).map((m) => ({
+        ...m,
+        palette: m.palette
+          ? { ...m.palette, fahrzeug: fahrzeugMap[m.palette.fahrzeug_id] }
+          : undefined,
+      }))
+    );
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { laden(); }, [zugId]);
 
-  const set = (key: string, value: string | number) =>
-    setForm((f) => ({ ...f, [key]: value }));
+  function setPaletteId(value: string) {
+    setForm((f) => ({ ...f, palette_id: value }));
+  }
 
-  function paletteLabel(p: PaletteMitFahrzeug) {
+  function setSeriennummer(value: string) {
+    setForm((f) => ({
+      ...f,
+      seriennummer: value,
+      // Seriennummer → Bestand muss 1 sein (eindeutiges Objekt)
+      bestand: value.trim() ? 1 : f.bestand,
+    }));
+  }
+
+  function getLabelForPalette(p: PaletteMitFahrzeug) {
     const fzLabel = p.fahrzeug
-      ? `${p.fahrzeug.id}${p.fahrzeug.name !== p.fahrzeug.id ? ` (${p.fahrzeug.name})` : ""} – `
+      ? `${p.fahrzeug.m_nummer}${p.fahrzeug.name !== p.fahrzeug.m_nummer ? ` (${p.fahrzeug.name})` : ""} – `
       : "";
     return `${fzLabel}${p.name}`;
   }
 
   async function hinzufuegen(e: React.FormEvent) {
     e.preventDefault();
+    setFehler(null);
     if (!form.objekt.trim() || !form.palette_id) return;
-    await supabase.from("material").insert({
+
+    const sn = form.seriennummer.trim();
+
+    // Seriennummer-Duplikatcheck innerhalb des Zugs
+    if (sn && paletteIds.length > 0) {
+      const { data: existing } = await supabase
+        .from("material")
+        .select("id, objekt")
+        .eq("seriennummer", sn)
+        .in("palette_id", paletteIds)
+        .maybeSingle();
+
+      if (existing) {
+        setFehler(`Seriennummer «${sn}» ist bereits erfasst (${existing.objekt}).`);
+        return;
+      }
+    }
+
+    const { error } = await supabase.from("material").insert({
       palette_id: form.palette_id,
       typ: form.typ,
       objekt: form.objekt.trim(),
-      seriennummer: form.seriennummer.trim() || null,
-      bestand_initial: form.bestand,
-      bestand_aktuell: form.bestand,
+      seriennummer: sn || null,
+      bestand_initial: sn ? 1 : form.bestand,
+      bestand_aktuell: sn ? 1 : form.bestand,
     });
+
+    if (error) {
+      setFehler(`Fehler: ${error.message}`);
+      return;
+    }
+
     setForm((f) => ({ ...f, objekt: "", seriennummer: "", bestand: 1 }));
     laden();
   }
@@ -122,10 +160,14 @@ export default function MaterialAdmin() {
   async function bestandAnpassen(id: string, delta: number) {
     const item = materialListe.find((m) => m.id === id);
     if (!item) return;
+    // Objekte mit Seriennummer haben immer Bestand 1 — kein Anpassen
+    if (item.seriennummer) return;
     const neu = Math.max(0, item.bestand_aktuell + delta);
     await supabase.from("material").update({ bestand_aktuell: neu }).eq("id", id);
     laden();
   }
+
+  const hatSeriennummer = form.seriennummer.trim().length > 0;
 
   return (
     <main className="max-w-lg mx-auto p-4">
@@ -134,7 +176,8 @@ export default function MaterialAdmin() {
 
       {paletten.length === 0 && zugId && (
         <p className="text-sm text-amber-700 bg-amber-50 rounded-xl px-4 py-3 mb-6">
-          Noch keine Paletten vorhanden. Zuerst unter <Link href="/admin/fahrzeuge" className="underline">Fahrzeuge & Paletten</Link> eine Palette anlegen.
+          Noch keine Paletten vorhanden. Zuerst unter{" "}
+          <Link href="/admin/fahrzeuge" className="underline">Fahrzeuge & Paletten</Link> eine Palette anlegen.
         </p>
       )}
 
@@ -147,13 +190,13 @@ export default function MaterialAdmin() {
           <label className="block text-xs font-medium text-gray-500 mb-1">Palette <span className="text-red-500">*</span></label>
           <select
             value={form.palette_id}
-            onChange={(e) => set("palette_id", e.target.value)}
+            onChange={(e) => setPaletteId(e.target.value)}
             required
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white"
           >
             <option value="">— Palette wählen —</option>
             {paletten.map((p) => (
-              <option key={p.id} value={p.id}>{paletteLabel(p)}</option>
+              <option key={p.id} value={p.id}>{getLabelForPalette(p)}</option>
             ))}
           </select>
         </div>
@@ -164,7 +207,7 @@ export default function MaterialAdmin() {
             <label className="block text-xs font-medium text-gray-500 mb-1">Typ</label>
             <select
               value={form.typ}
-              onChange={(e) => set("typ", e.target.value)}
+              onChange={(e) => setForm((f) => ({ ...f, typ: e.target.value as MaterialTyp }))}
               className="w-full border border-gray-300 rounded-lg px-3 py-2.5 bg-white"
             >
               {Object.entries(MATERIAL_TYP_LABEL).map(([k, v]) => (
@@ -173,13 +216,16 @@ export default function MaterialAdmin() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Bestand</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">
+              Bestand {hatSeriennummer && <span className="text-gray-400">(fix: 1)</span>}
+            </label>
             <input
               type="number"
               min={1}
-              value={form.bestand}
-              onChange={(e) => set("bestand", parseInt(e.target.value))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2.5"
+              value={hatSeriennummer ? 1 : form.bestand}
+              onChange={(e) => setForm((f) => ({ ...f, bestand: parseInt(e.target.value) }))}
+              disabled={hatSeriennummer}
+              className={`w-full border border-gray-300 rounded-lg px-3 py-2.5 ${hatSeriennummer ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""}`}
             />
           </div>
         </div>
@@ -189,7 +235,7 @@ export default function MaterialAdmin() {
           <label className="block text-xs font-medium text-gray-500 mb-1">Objekt <span className="text-red-500">*</span></label>
           <input
             value={form.objekt}
-            onChange={(e) => set("objekt", e.target.value)}
+            onChange={(e) => setForm((f) => ({ ...f, objekt: e.target.value }))}
             placeholder="z.B. SE-235, Funkgerät"
             required
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5"
@@ -199,15 +245,17 @@ export default function MaterialAdmin() {
         {/* Seriennummer */}
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">
-            Seriennummer <span className="text-gray-400">(optional)</span>
+            Seriennummer <span className="text-gray-400">(optional – sperrt Bestand auf 1)</span>
           </label>
           <input
             value={form.seriennummer}
-            onChange={(e) => set("seriennummer", e.target.value)}
+            onChange={(e) => setSeriennummer(e.target.value)}
             placeholder="z.B. CH-1234567"
             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 font-mono"
           />
         </div>
+
+        {fehler && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{fehler}</p>}
 
         <button type="submit" className="bg-red-600 text-white rounded-xl py-3 font-semibold active:bg-red-700">
           Hinzufügen
@@ -217,8 +265,8 @@ export default function MaterialAdmin() {
       {/* Materialliste */}
       <div className="flex flex-col gap-2">
         {materialListe.map((m) => {
-          const paletteLabel = m.palette
-            ? `${m.palette.fahrzeug?.id ?? ""} – ${m.palette.name}`
+          const label = m.palette
+            ? `${m.palette.fahrzeug?.m_nummer ?? ""} – ${m.palette.name}`
             : "—";
           return (
             <div key={m.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3">
@@ -229,23 +277,27 @@ export default function MaterialAdmin() {
                     <p className="text-xs font-mono text-gray-500">{m.seriennummer}</p>
                   )}
                   <p className="text-xs text-gray-400">
-                    {MATERIAL_TYP_LABEL[m.typ]} · {paletteLabel}
+                    {MATERIAL_TYP_LABEL[m.typ]} · {label}
                   </p>
                 </div>
                 <button onClick={() => loeschen(m.id)} className="text-xs text-red-500">Löschen</button>
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => bestandAnpassen(m.id, -1)}
-                  className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center"
-                >−</button>
-                <span className="font-bold text-lg w-12 text-center">{m.bestand_aktuell}</span>
-                <button
-                  onClick={() => bestandAnpassen(m.id, 1)}
-                  className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center"
-                >+</button>
-                <span className="text-xs text-gray-400">/ {m.bestand_initial}</span>
-              </div>
+              {m.seriennummer ? (
+                <p className="text-xs text-gray-400">Einzelobjekt (Bestand: {m.bestand_aktuell})</p>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => bestandAnpassen(m.id, -1)}
+                    className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center"
+                  >−</button>
+                  <span className="font-bold text-lg w-12 text-center">{m.bestand_aktuell}</span>
+                  <button
+                    onClick={() => bestandAnpassen(m.id, 1)}
+                    className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center"
+                  >+</button>
+                  <span className="text-xs text-gray-400">/ {m.bestand_initial}</span>
+                </div>
+              )}
             </div>
           );
         })}
