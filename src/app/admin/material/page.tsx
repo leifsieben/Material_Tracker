@@ -343,177 +343,158 @@ export default function MaterialAdmin() {
         </button>
       </form>
 
-      {/* ── Materialliste ── */}
-      <div className="flex flex-col gap-2">
-        {materialListe.map((m) => {
-          const label = m.palette?.is_lager
-            ? "📦 Im Lager"
-            : m.palette
-            ? `M+${m.palette.fahrzeug?.m_nummer ?? ""} – ${m.palette.name}`
-            : "—";
+      {/* ── Materialliste nach Fahrzeug / Lagerort ── */}
+      {(() => {
+        // Hilfs-Renderer für eine einzelne Material-Karte
+        function MaterialKarte({ m }: { m: MaterialMitPalette }) {
           const istEdit = editId === m.id;
-
           if (istEdit && editForm) {
-            // ── Edit-Karte ──
             const editHatSn = editForm.seriennummer.trim().length > 0;
             return (
-              <div key={m.id} className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col gap-3">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col gap-3">
                 <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Bearbeiten</p>
-
-                {/* Objekt */}
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Objekt</label>
-                  <input
-                    value={editForm.objekt}
-                    onChange={(e) => setEditForm((f) => f && ({ ...f, objekt: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
-                  />
+                  <input value={editForm.objekt} onChange={(e) => setEditForm((f) => f && ({ ...f, objekt: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white" />
                 </div>
-
-                {/* Typ */}
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Typ</label>
-                  <select
-                    value={editForm.typ}
-                    onChange={(e) => setEditForm((f) => f && ({ ...f, typ: e.target.value as MaterialTyp }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
-                  >
-                    {Object.entries(MATERIAL_TYP_LABEL).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
+                  <select value={editForm.typ} onChange={(e) => setEditForm((f) => f && ({ ...f, typ: e.target.value as MaterialTyp }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white">
+                    {Object.entries(MATERIAL_TYP_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
                 </div>
-
-                {/* Seriennummer */}
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Seriennummer</label>
-                  <input
-                    value={editForm.seriennummer}
-                    onChange={(e) => setEditForm((f) => f && ({
-                      ...f,
-                      seriennummer: e.target.value,
-                      bestand_initial: e.target.value.trim() ? 1 : f.bestand_initial,
-                      bestand_aktuell: e.target.value.trim() ? 1 : f.bestand_aktuell,
-                    }))}
-                    placeholder="optional"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white font-mono text-sm"
-                  />
+                  <input value={editForm.seriennummer} onChange={(e) => setEditForm((f) => f && ({ ...f, seriennummer: e.target.value, bestand_initial: e.target.value.trim() ? 1 : f.bestand_initial, bestand_aktuell: e.target.value.trim() ? 1 : f.bestand_aktuell }))} placeholder="optional" className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white font-mono text-sm" />
                 </div>
-
-                {/* Bestände */}
                 {!editHatSn && (
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Sollbestand</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={editForm.bestand_initial}
-                        onChange={(e) => setEditForm((f) => f && ({ ...f, bestand_initial: parseInt(e.target.value) || 0 }))}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
-                      />
+                      <input type="number" min={0} value={editForm.bestand_initial} onChange={(e) => setEditForm((f) => f && ({ ...f, bestand_initial: parseInt(e.target.value) || 0 }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white" />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Istbestand</label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={editForm.bestand_aktuell}
-                        onChange={(e) => setEditForm((f) => f && ({ ...f, bestand_aktuell: parseInt(e.target.value) || 0 }))}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
-                      />
+                      <input type="number" min={0} value={editForm.bestand_aktuell} onChange={(e) => setEditForm((f) => f && ({ ...f, bestand_aktuell: parseInt(e.target.value) || 0 }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white" />
                     </div>
                   </div>
                 )}
-
-                {/* Palette / Fahrzeug */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Lagerort</label>
-                  <select
-                    value={editForm.palette_id}
-                    onChange={(e) => setEditForm((f) => f && ({ ...f, palette_id: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
-                  >
-                    {paletten.map((p) => (
-                      <option key={p.id} value={p.id}>{getLabelForPalette(p)}</option>
-                    ))}
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Lagerort verschieben</label>
+                  <select value={editForm.palette_id} onChange={(e) => setEditForm((f) => f && ({ ...f, palette_id: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white">
+                    {paletten.map((p) => <option key={p.id} value={p.id}>{getLabelForPalette(p)}</option>)}
                   </select>
                 </div>
-
-                {editFehler && (
-                  <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{editFehler}</p>
-                )}
-
+                {editFehler && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{editFehler}</p>}
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => editSpeichern(m.id)}
-                    disabled={editLaden}
-                    className="flex-1 bg-red-600 text-white rounded-xl py-2.5 font-semibold active:bg-red-700 disabled:opacity-50"
-                  >
-                    {editLaden ? "Speichern…" : "Speichern"}
-                  </button>
-                  <button
-                    onClick={editAbbrechen}
-                    className="flex-1 bg-gray-100 text-gray-700 rounded-xl py-2.5 font-semibold active:bg-gray-200"
-                  >
-                    Abbrechen
-                  </button>
+                  <button onClick={() => editSpeichern(m.id)} disabled={editLaden} className="flex-1 bg-red-600 text-white rounded-xl py-2.5 font-semibold active:bg-red-700 disabled:opacity-50">{editLaden ? "Speichern…" : "Speichern"}</button>
+                  <button onClick={editAbbrechen} className="flex-1 bg-gray-100 text-gray-700 rounded-xl py-2.5 font-semibold active:bg-gray-200">Abbrechen</button>
                 </div>
-
-                <button
-                  onClick={() => loeschen(m.id)}
-                  className="text-xs text-red-500 text-center py-1"
-                >
-                  Löschen
-                </button>
+                <button onClick={() => loeschen(m.id)} className="text-xs text-red-500 text-center py-1">Löschen</button>
               </div>
             );
           }
-
-          // ── Normal-Karte ──
           return (
-            <div key={m.id} className="bg-white border border-gray-200 rounded-xl px-4 py-3">
+            <div className="bg-white border border-gray-200 rounded-xl px-4 py-3">
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <p className="font-semibold text-gray-900">{m.objekt}</p>
-                  {m.seriennummer && (
-                    <p className="text-xs font-mono text-gray-500">{m.seriennummer}</p>
-                  )}
-                  <p className="text-xs text-gray-400">
-                    {MATERIAL_TYP_LABEL[m.typ]} · {label}
-                  </p>
+                  {m.seriennummer && <p className="text-xs font-mono text-gray-500">{m.seriennummer}</p>}
+                  <p className="text-xs text-gray-400">{MATERIAL_TYP_LABEL[m.typ]}</p>
                 </div>
-                <button
-                  onClick={() => editStarten(m)}
-                  className="text-xs text-blue-600 font-medium px-2 py-1 rounded-lg hover:bg-blue-50"
-                >
-                  Bearbeiten
-                </button>
+                <button onClick={() => editStarten(m)} className="text-xs text-blue-600 font-medium px-2 py-1 rounded-lg hover:bg-blue-50">Bearbeiten</button>
               </div>
               {m.seriennummer ? (
                 <p className="text-xs text-gray-400">Einzelobjekt (Bestand: {m.bestand_aktuell})</p>
               ) : (
                 <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => bestandAnpassen(m.id, -1)}
-                    className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center"
-                  >−</button>
+                  <button onClick={() => bestandAnpassen(m.id, -1)} className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center">−</button>
                   <span className="font-bold text-lg w-12 text-center">{m.bestand_aktuell}</span>
-                  <button
-                    onClick={() => bestandAnpassen(m.id, 1)}
-                    className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center"
-                  >+</button>
+                  <button onClick={() => bestandAnpassen(m.id, 1)} className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center">+</button>
                   <span className="text-xs text-gray-400">/ {m.bestand_initial}</span>
                 </div>
               )}
             </div>
           );
-        })}
+        }
 
-        {materialListe.length === 0 && zugId && paletten.length > 0 && (
-          <p className="text-gray-400 text-sm text-center py-8">Noch kein Material erfasst.</p>
-        )}
-      </div>
+        // Fahrzeuge aus Paletten ableiten (Reihenfolge erhalten)
+        const fahrzeugIds: string[] = [];
+        const fahrzeugMap: Record<string, { m_nummer: number; name: string }> = {};
+        const palettenByFz: Record<string, PaletteMitFahrzeug[]> = {};
+        const lagerPalette = paletten.find((p) => p.is_lager);
+
+        for (const p of paletten) {
+          if (p.is_lager || !p.fahrzeug) continue;
+          const fzId = p.fahrzeug.id;
+          if (!fahrzeugIds.includes(fzId)) {
+            fahrzeugIds.push(fzId);
+            fahrzeugMap[fzId] = p.fahrzeug;
+          }
+          if (!palettenByFz[fzId]) palettenByFz[fzId] = [];
+          palettenByFz[fzId].push(p);
+        }
+
+        const hatMaterial = materialListe.length > 0;
+
+        return (
+          <div className="flex flex-col gap-4">
+            {!hatMaterial && zugId && paletten.length > 0 && (
+              <p className="text-gray-400 text-sm text-center py-8">Noch kein Material erfasst.</p>
+            )}
+
+            {/* ── Pro Fahrzeug ── */}
+            {fahrzeugIds.map((fzId) => {
+              const fz = fahrzeugMap[fzId];
+              const fzPaletten = palettenByFz[fzId] ?? [];
+              const fzHatMaterial = fzPaletten.some((p) => materialListe.some((m) => m.palette_id === p.id));
+              if (!fzHatMaterial) return null;
+
+              return (
+                <section key={fzId}>
+                  {/* Fahrzeug-Header */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-bold font-mono text-sm text-gray-800 bg-gray-200 rounded px-2 py-0.5">M+{fz.m_nummer}</span>
+                    {fz.name !== `M+${fz.m_nummer}` && <span className="text-sm text-gray-500">{fz.name}</span>}
+                  </div>
+
+                  {/* Pro Lagerort innerhalb des Fahrzeugs */}
+                  <div className="flex flex-col gap-3 pl-3 border-l-2 border-gray-200">
+                    {fzPaletten.map((p) => {
+                      const pMat = materialListe.filter((m) => m.palette_id === p.id);
+                      if (pMat.length === 0) return null;
+                      return (
+                        <div key={p.id}>
+                          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">{p.name}</p>
+                          <div className="flex flex-col gap-2">
+                            {pMat.map((m) => <MaterialKarte key={m.id} m={m} />)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })}
+
+            {/* ── Im Lager ── */}
+            {lagerPalette && (() => {
+              const lagerMat = materialListe.filter((m) => m.palette_id === lagerPalette.id);
+              if (lagerMat.length === 0) return null;
+              return (
+                <section>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-bold text-sm text-amber-700 bg-amber-100 rounded px-2 py-0.5">📦 Im Lager</span>
+                  </div>
+                  <div className="flex flex-col gap-2 pl-3 border-l-2 border-amber-200">
+                    {lagerMat.map((m) => <MaterialKarte key={m.id} m={m} />)}
+                  </div>
+                </section>
+              );
+            })()}
+          </div>
+        );
+      })()}
     </main>
   );
 }
