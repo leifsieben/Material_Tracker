@@ -154,6 +154,8 @@ input {
     padding: 0;
     width: 100%;
     box-sizing: border-box;
+    page-break-after: always;
+    break-after: page;
   }
 
   /* Label-Styling für Druck */

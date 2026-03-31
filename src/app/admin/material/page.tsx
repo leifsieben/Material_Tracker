@@ -55,6 +55,7 @@ export default function MaterialAdmin() {
   const [editLaden, setEditLaden] = useState(false);
 
   // Mehrfachauswahl
+  const [auswahlModus, setAuswahlModus] = useState(false);
   const [auswahl, setAuswahl] = useState<Set<string>>(new Set());
   const [bulkZiel, setBulkZiel] = useState<string>("");
   const [bulkLaden, setBulkLaden] = useState(false);
@@ -257,6 +258,19 @@ export default function MaterialAdmin() {
     laden();
   }
 
+  function auswahlModusStarten() {
+    setAuswahlModus(true);
+    setAuswahl(new Set());
+    setEditId(null);
+    setEditForm(null);
+  }
+
+  function auswahlModusBeenden() {
+    setAuswahlModus(false);
+    setAuswahl(new Set());
+    setBulkZiel("");
+  }
+
   function toggleAuswahl(id: string) {
     setAuswahl((prev) => {
       const neu = new Set(prev);
@@ -277,8 +291,7 @@ export default function MaterialAdmin() {
     if (!bulkZiel || auswahl.size === 0) return;
     setBulkLaden(true);
     await supabase.from("material").update({ palette_id: bulkZiel }).in("id", [...auswahl]);
-    setAuswahl(new Set());
-    setBulkZiel("");
+    auswahlModusBeenden();
     setBulkLaden(false);
     laden();
   }
@@ -288,7 +301,7 @@ export default function MaterialAdmin() {
     if (!confirm(`${auswahl.size} Objekt(e) wirklich löschen?`)) return;
     setBulkLaden(true);
     await supabase.from("material").delete().in("id", [...auswahl]);
-    setAuswahl(new Set());
+    auswahlModusBeenden();
     setBulkLaden(false);
     laden();
   }
@@ -384,53 +397,30 @@ export default function MaterialAdmin() {
         </button>
       </form>
 
-      {/* ── Auswahl-Steuerung ── */}
-      {materialListe.length > 0 && (
-        <div className="flex items-center justify-between mb-3">
+      {/* ── Auswahl-Modus Trigger ── */}
+      {materialListe.length > 0 && !auswahlModus && (
+        <div className="flex justify-end mb-3">
           <button
             type="button"
-            onClick={alleAuswaehlen}
-            className="text-sm text-gray-500 hover:text-gray-800"
+            onClick={auswahlModusStarten}
+            className="text-sm text-gray-500 border border-gray-300 rounded-lg px-3 py-1.5 active:bg-gray-100"
           >
-            {auswahl.size === materialListe.length && materialListe.length > 0
-              ? "Auswahl aufheben"
-              : `Alle auswählen (${materialListe.length})`}
+            Auswählen
           </button>
-          {auswahl.size > 0 && (
-            <span className="text-sm font-semibold text-red-600">{auswahl.size} ausgewählt</span>
-          )}
         </div>
       )}
 
-      {/* ── Bulk-Aktionsleiste ── */}
-      {auswahl.size > 0 && (
-        <div className="bg-gray-800 text-white rounded-xl p-3 mb-4 flex flex-col gap-2">
-          <p className="text-xs font-semibold text-gray-300 uppercase tracking-wide">{auswahl.size} Objekt(e) ausgewählt</p>
-          <div className="flex gap-2">
-            <select
-              value={bulkZiel}
-              onChange={(e) => setBulkZiel(e.target.value)}
-              className="flex-1 text-sm bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2"
-            >
-              <option value="">— Verschieben nach… —</option>
-              {paletten.map((p) => (
-                <option key={p.id} value={p.id}>{getLabelForPalette(p)}</option>
-              ))}
-            </select>
-            <button
-              onClick={bulkVerschieben}
-              disabled={!bulkZiel || bulkLaden}
-              className="bg-red-600 text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-40 active:bg-red-700"
-            >
-              {bulkLaden ? "…" : "OK"}
-            </button>
-          </div>
-          <button
-            onClick={bulkLoeschen}
-            disabled={bulkLaden}
-            className="text-sm text-red-400 hover:text-red-300 text-left disabled:opacity-40"
-          >
-            🗑 Ausgewählte löschen
+      {/* ── Auswahl-Modus Kopfzeile ── */}
+      {auswahlModus && (
+        <div className="flex items-center justify-between mb-3">
+          <button onClick={alleAuswaehlen} className="text-sm font-medium text-red-600">
+            {auswahl.size === materialListe.length ? "Alle abwählen" : "Alle wählen"}
+          </button>
+          <span className="text-sm text-gray-500">
+            {auswahl.size > 0 ? `${auswahl.size} ausgewählt` : "Objekte antippen…"}
+          </span>
+          <button onClick={auswahlModusBeenden} className="text-sm text-gray-500">
+            Abbrechen
           </button>
         </div>
       )}
@@ -488,32 +478,47 @@ export default function MaterialAdmin() {
           }
           const gewaehlt = auswahl.has(m.id);
           return (
-            <div className={`border rounded-xl px-4 py-3 transition-colors ${gewaehlt ? "bg-red-50 border-red-300" : "bg-white border-gray-200"}`}>
+            <div
+              className={`border rounded-xl px-4 py-3 transition-colors ${gewaehlt ? "bg-red-50 border-red-300" : "bg-white border-gray-200"}`}
+              onClick={auswahlModus ? () => toggleAuswahl(m.id) : undefined}
+            >
               <div className="flex justify-between items-start mb-2">
-                <div className="flex items-start gap-2 flex-1 min-w-0">
-                  <input
-                    type="checkbox"
-                    checked={gewaehlt}
-                    onChange={() => toggleAuswahl(m.id)}
-                    className="mt-1 accent-red-600 shrink-0"
-                  />
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {/* Kreis-Auswahl */}
+                  {auswahlModus && (
+                    <div className={`w-6 h-6 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
+                      gewaehlt ? "bg-red-600 border-red-600" : "border-gray-400 bg-white"
+                    }`}>
+                      {gewaehlt && (
+                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <p className="font-semibold text-gray-900">{m.objekt}</p>
                     {m.seriennummer && <p className="text-xs font-mono text-gray-500">{m.seriennummer}</p>}
                     <p className="text-xs text-gray-400">{MATERIAL_TYP_LABEL[m.typ]}</p>
                   </div>
                 </div>
-                <button onClick={() => editStarten(m)} className="text-xs text-blue-600 font-medium px-2 py-1 rounded-lg hover:bg-blue-50 shrink-0">Bearbeiten</button>
+                {!auswahlModus && (
+                  <button onClick={() => editStarten(m)} className="text-xs text-blue-600 font-medium px-2 py-1 rounded-lg hover:bg-blue-50 shrink-0">
+                    Bearbeiten
+                  </button>
+                )}
               </div>
-              {m.seriennummer ? (
-                <p className="text-xs text-gray-400 pl-6">Einzelobjekt (Bestand: {m.bestand_aktuell})</p>
-              ) : (
-                <div className="flex items-center gap-3 pl-6">
-                  <button onClick={() => bestandAnpassen(m.id, -1)} className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center">−</button>
-                  <span className="font-bold text-lg w-12 text-center">{m.bestand_aktuell}</span>
-                  <button onClick={() => bestandAnpassen(m.id, 1)} className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center">+</button>
-                  <span className="text-xs text-gray-400">/ {m.bestand_initial}</span>
-                </div>
+              {!auswahlModus && (
+                m.seriennummer ? (
+                  <p className="text-xs text-gray-400">Einzelobjekt (Bestand: {m.bestand_aktuell})</p>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <button onClick={(e) => { e.stopPropagation(); bestandAnpassen(m.id, -1); }} className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center">−</button>
+                    <span className="font-bold text-lg w-12 text-center">{m.bestand_aktuell}</span>
+                    <button onClick={(e) => { e.stopPropagation(); bestandAnpassen(m.id, 1); }} className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center">+</button>
+                    <span className="text-xs text-gray-400">/ {m.bestand_initial}</span>
+                  </div>
+                )
               )}
             </div>
           );
@@ -596,6 +601,43 @@ export default function MaterialAdmin() {
           </div>
         );
       })()}
+
+      {/* Abstand damit Sticky-Bar nichts überdeckt */}
+      {auswahlModus && <div className="h-40" />}
+
+      {/* ── Sticky Aktionsleiste ── */}
+      {auswahlModus && (
+        <div className="fixed bottom-0 left-0 right-0 bg-gray-900 text-white px-4 pt-3 pb-6 shadow-2xl z-50">
+          <div className="max-w-lg mx-auto flex flex-col gap-3">
+            <div className="flex gap-2">
+              <select
+                value={bulkZiel}
+                onChange={(e) => setBulkZiel(e.target.value)}
+                className="flex-1 text-sm bg-gray-700 text-white border border-gray-600 rounded-xl px-3 py-3"
+              >
+                <option value="">Verschieben nach…</option>
+                {paletten.map((p) => (
+                  <option key={p.id} value={p.id}>{getLabelForPalette(p)}</option>
+                ))}
+              </select>
+              <button
+                onClick={bulkVerschieben}
+                disabled={!bulkZiel || auswahl.size === 0 || bulkLaden}
+                className="bg-red-600 text-white rounded-xl px-5 font-semibold text-sm disabled:opacity-40 active:bg-red-700"
+              >
+                {bulkLaden ? "…" : "OK"}
+              </button>
+            </div>
+            <button
+              onClick={bulkLoeschen}
+              disabled={auswahl.size === 0 || bulkLaden}
+              className="w-full py-3 rounded-xl border border-red-500 text-red-400 text-sm font-semibold disabled:opacity-40 active:bg-red-950"
+            >
+              🗑 {auswahl.size > 0 ? `${auswahl.size} Objekt(e) löschen` : "Löschen"}
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
