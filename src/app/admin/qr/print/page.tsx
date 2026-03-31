@@ -156,9 +156,14 @@ function AlleLabels() {
         ))}
       </div>
 
+      {/* Harter Seitenumbruch als eigenes Block-Element */}
+      {hatMaterial && (
+        <div style={{ display: "block", pageBreakAfter: "always", breakAfter: "page", height: 0, overflow: "hidden" }} aria-hidden="true" />
+      )}
+
       {/* Seite 2: Verladeliste */}
       {hatMaterial && (
-        <div className="verladeliste">
+        <div className="verladeliste" style={{ pageBreakBefore: "always", breakBefore: "page" }}>
           {/* Header */}
           <div className="vl-header">
             <div>
