@@ -54,6 +54,11 @@ export default function MaterialAdmin() {
   const [editFehler, setEditFehler] = useState<string | null>(null);
   const [editLaden, setEditLaden] = useState(false);
 
+  // Mehrfachauswahl
+  const [auswahl, setAuswahl] = useState<Set<string>>(new Set());
+  const [bulkZiel, setBulkZiel] = useState<string>("");
+  const [bulkLaden, setBulkLaden] = useState(false);
+
   async function laden() {
     if (!zugId) return;
 
@@ -252,6 +257,42 @@ export default function MaterialAdmin() {
     laden();
   }
 
+  function toggleAuswahl(id: string) {
+    setAuswahl((prev) => {
+      const neu = new Set(prev);
+      neu.has(id) ? neu.delete(id) : neu.add(id);
+      return neu;
+    });
+  }
+
+  function alleAuswaehlen() {
+    if (auswahl.size === materialListe.length) {
+      setAuswahl(new Set());
+    } else {
+      setAuswahl(new Set(materialListe.map((m) => m.id)));
+    }
+  }
+
+  async function bulkVerschieben() {
+    if (!bulkZiel || auswahl.size === 0) return;
+    setBulkLaden(true);
+    await supabase.from("material").update({ palette_id: bulkZiel }).in("id", [...auswahl]);
+    setAuswahl(new Set());
+    setBulkZiel("");
+    setBulkLaden(false);
+    laden();
+  }
+
+  async function bulkLoeschen() {
+    if (auswahl.size === 0) return;
+    if (!confirm(`${auswahl.size} Objekt(e) wirklich löschen?`)) return;
+    setBulkLaden(true);
+    await supabase.from("material").delete().in("id", [...auswahl]);
+    setAuswahl(new Set());
+    setBulkLaden(false);
+    laden();
+  }
+
   const hatSeriennummer = form.seriennummer.trim().length > 0;
 
   return (
@@ -343,6 +384,57 @@ export default function MaterialAdmin() {
         </button>
       </form>
 
+      {/* ── Auswahl-Steuerung ── */}
+      {materialListe.length > 0 && (
+        <div className="flex items-center justify-between mb-3">
+          <button
+            type="button"
+            onClick={alleAuswaehlen}
+            className="text-sm text-gray-500 hover:text-gray-800"
+          >
+            {auswahl.size === materialListe.length && materialListe.length > 0
+              ? "Auswahl aufheben"
+              : `Alle auswählen (${materialListe.length})`}
+          </button>
+          {auswahl.size > 0 && (
+            <span className="text-sm font-semibold text-red-600">{auswahl.size} ausgewählt</span>
+          )}
+        </div>
+      )}
+
+      {/* ── Bulk-Aktionsleiste ── */}
+      {auswahl.size > 0 && (
+        <div className="bg-gray-800 text-white rounded-xl p-3 mb-4 flex flex-col gap-2">
+          <p className="text-xs font-semibold text-gray-300 uppercase tracking-wide">{auswahl.size} Objekt(e) ausgewählt</p>
+          <div className="flex gap-2">
+            <select
+              value={bulkZiel}
+              onChange={(e) => setBulkZiel(e.target.value)}
+              className="flex-1 text-sm bg-gray-700 text-white border border-gray-600 rounded-lg px-3 py-2"
+            >
+              <option value="">— Verschieben nach… —</option>
+              {paletten.map((p) => (
+                <option key={p.id} value={p.id}>{getLabelForPalette(p)}</option>
+              ))}
+            </select>
+            <button
+              onClick={bulkVerschieben}
+              disabled={!bulkZiel || bulkLaden}
+              className="bg-red-600 text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-40 active:bg-red-700"
+            >
+              {bulkLaden ? "…" : "OK"}
+            </button>
+          </div>
+          <button
+            onClick={bulkLoeschen}
+            disabled={bulkLaden}
+            className="text-sm text-red-400 hover:text-red-300 text-left disabled:opacity-40"
+          >
+            🗑 Ausgewählte löschen
+          </button>
+        </div>
+      )}
+
       {/* ── Materialliste nach Fahrzeug / Lagerort ── */}
       {(() => {
         // Hilfs-Renderer für eine einzelne Material-Karte
@@ -394,20 +486,29 @@ export default function MaterialAdmin() {
               </div>
             );
           }
+          const gewaehlt = auswahl.has(m.id);
           return (
-            <div className="bg-white border border-gray-200 rounded-xl px-4 py-3">
+            <div className={`border rounded-xl px-4 py-3 transition-colors ${gewaehlt ? "bg-red-50 border-red-300" : "bg-white border-gray-200"}`}>
               <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="font-semibold text-gray-900">{m.objekt}</p>
-                  {m.seriennummer && <p className="text-xs font-mono text-gray-500">{m.seriennummer}</p>}
-                  <p className="text-xs text-gray-400">{MATERIAL_TYP_LABEL[m.typ]}</p>
+                <div className="flex items-start gap-2 flex-1 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={gewaehlt}
+                    onChange={() => toggleAuswahl(m.id)}
+                    className="mt-1 accent-red-600 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900">{m.objekt}</p>
+                    {m.seriennummer && <p className="text-xs font-mono text-gray-500">{m.seriennummer}</p>}
+                    <p className="text-xs text-gray-400">{MATERIAL_TYP_LABEL[m.typ]}</p>
+                  </div>
                 </div>
-                <button onClick={() => editStarten(m)} className="text-xs text-blue-600 font-medium px-2 py-1 rounded-lg hover:bg-blue-50">Bearbeiten</button>
+                <button onClick={() => editStarten(m)} className="text-xs text-blue-600 font-medium px-2 py-1 rounded-lg hover:bg-blue-50 shrink-0">Bearbeiten</button>
               </div>
               {m.seriennummer ? (
-                <p className="text-xs text-gray-400">Einzelobjekt (Bestand: {m.bestand_aktuell})</p>
+                <p className="text-xs text-gray-400 pl-6">Einzelobjekt (Bestand: {m.bestand_aktuell})</p>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 pl-6">
                   <button onClick={() => bestandAnpassen(m.id, -1)} className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center">−</button>
                   <span className="font-bold text-lg w-12 text-center">{m.bestand_aktuell}</span>
                   <button onClick={() => bestandAnpassen(m.id, 1)} className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 font-bold text-lg flex items-center justify-center">+</button>
